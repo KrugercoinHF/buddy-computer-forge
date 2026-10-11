@@ -1,0 +1,4 @@
+{
+  "mission": "demo",
+  "status": "ready"
+}

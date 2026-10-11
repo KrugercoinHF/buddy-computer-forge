@@ -1,0 +1,99 @@
+import sqlite3
+from pathlib import Path
+from typing import Any
+
+from .config import DB_PATH
+
+
+def get_connection() -> sqlite3.Connection:
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db() -> None:
+    conn = get_connection()
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS nodes (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            hostname TEXT,
+            token_hash TEXT,
+            node_type TEXT,
+            status TEXT DEFAULT 'online',
+            telemetry TEXT,
+            last_seen TEXT,
+            created_at TEXT,
+            revoked INTEGER DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS missions (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            description TEXT,
+            status TEXT DEFAULT 'queued',
+            created_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS tasks (
+            id TEXT PRIMARY KEY,
+            mission_id TEXT,
+            task_type TEXT,
+            payload TEXT,
+            status TEXT DEFAULT 'queued',
+            created_at TEXT,
+            claimed_by TEXT,
+            lease_until TEXT,
+            stdout TEXT,
+            stderr TEXT,
+            exit_code INTEGER,
+            approved INTEGER DEFAULT 0,
+            approval_note TEXT,
+            submitted_code TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS approvals (
+            id TEXT PRIMARY KEY,
+            task_id TEXT,
+            decision TEXT,
+            actor TEXT,
+            note TEXT,
+            created_at TEXT,
+            submitted_code TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS audit_events (
+            id TEXT PRIMARY KEY,
+            event_type TEXT,
+            node_id TEXT,
+            task_id TEXT,
+            message TEXT,
+            created_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        );
+        """
+    )
+    conn.commit()
+    conn.close()
+
+
+def fetch_one(query: str, params: tuple[Any, ...] = ()) -> sqlite3.Row | None:
+    with get_connection() as conn:
+        return conn.execute(query, params).fetchone()
+
+
+def fetch_all(query: str, params: tuple[Any, ...] = ()) -> list[sqlite3.Row]:
+    with get_connection() as conn:
+        return conn.execute(query, params).fetchall()
+
+
+def execute(query: str, params: tuple[Any, ...] = ()) -> None:
+    with get_connection() as conn:
+        conn.execute(query, params)
+        conn.commit()
