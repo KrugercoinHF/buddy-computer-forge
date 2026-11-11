@@ -201,7 +201,9 @@ def node_heartbeat(payload: dict[str, Any], authorization: str | None = Header(d
         )
         add_audit("node_registered", f"node {node_id} registered", node_id=node_id)
     else:
-        if verify_hash(node_token, node.get("token_hash")) is False:
+        if node["revoked"]:
+            raise HTTPException(status_code=401, detail="node has been revoked")
+        if verify_hash(node_token, node["token_hash"]) is False:
             raise HTTPException(status_code=401, detail="invalid node token")
         execute(
             "UPDATE nodes SET hostname = ?, telemetry = ?, last_seen = ?, status = 'online' WHERE id = ?",
