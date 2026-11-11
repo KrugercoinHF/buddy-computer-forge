@@ -5,7 +5,7 @@ from buddy.db import init_db
 
 
 def test_health_is_public(monkeypatch, tmp_path):
-    monkeypatch.setenv("BUDDY_DB_PATH", str(tmp_path / "test.db"))
+    monkeypatch.setattr("buddy.db.DB_PATH", tmp_path / "test.db")
     init_db()
     with TestClient(app) as client:
         response = client.get("/api/health")
