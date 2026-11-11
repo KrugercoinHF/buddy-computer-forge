@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import secrets
 from typing import Optional
 
@@ -14,4 +15,4 @@ def generate_token() -> str:
 def verify_hash(secret: str, hashed: Optional[str]) -> bool:
     if not secret or not hashed:
         return False
-    return hash_secret(secret) == hashed
+    return hmac.compare_digest(hash_secret(secret), hashed)
