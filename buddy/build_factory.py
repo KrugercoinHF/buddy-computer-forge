@@ -3,7 +3,6 @@
 This module records build intent and outcomes only. It never executes shell
 commands, starts workers, deploys software, or grants execution permissions.
 """
-import json
 import os
 import uuid
 from datetime import datetime, timezone
@@ -86,10 +85,10 @@ def register_project(payload: dict[str, Any]) -> dict[str, Any]:
     repository = payload.get("repository")
     if not isinstance(name, str) or not name.strip() or len(name) > 120:
         raise HTTPException(status_code=400, detail="name is required (max 120 characters)")
-    if not isinstance(repository, str) or "/" not in repository or len(repository) > 200:
+    if not isinstance(repository, str) or len(repository) > 200 or len(repository.split("/")) != 2 or not all(part.strip() for part in repository.split("/")):
         raise HTTPException(status_code=400, detail="repository must be in owner/repository form")
     status = payload.get("status", "active")
-    if status not in PROJECT_STATUSES:
+    if not isinstance(status, str) or status not in PROJECT_STATUSES:
         raise HTTPException(status_code=400, detail="invalid project status")
     project_id = str(uuid.uuid4())
     now = _now()
@@ -137,7 +136,7 @@ def create_build_run(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(source_commit, str) or len(source_commit) > 80:
         raise HTTPException(status_code=400, detail="source_commit must be a string up to 80 characters")
     environment = payload.get("environment", "local")
-    if environment not in {"local", "ci", "cloud"}:
+    if not isinstance(environment, str) or environment not in {"local", "ci", "cloud"}:
         raise HTTPException(status_code=400, detail="environment must be local, ci, or cloud")
     run_id = str(uuid.uuid4())
     now = _now()
@@ -183,7 +182,7 @@ def finish_build_run(run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     if run["status"] != "running":
         raise HTTPException(status_code=409, detail="only running builds can be finished")
     status = payload.get("status")
-    if status not in {"succeeded", "failed", "cancelled"}:
+    if not isinstance(status, str) or status not in {"succeeded", "failed", "cancelled"}:
         raise HTTPException(status_code=400, detail="status must be succeeded, failed, or cancelled")
     execute(
         """UPDATE factory_runs
