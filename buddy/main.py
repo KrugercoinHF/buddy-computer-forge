@@ -3,6 +3,7 @@ import os
 import platform
 import sqlite3
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -16,7 +17,7 @@ from .db import execute, fetch_all, fetch_one, get_connection, init_db
 from .workspace import list_workspace_files, parse_payload, read_workspace_file, write_workspace_note
 from .build_factory import init_build_factory_db, router as build_factory_router
 
-app = FastAPI(title="Buddy Computer Forge", version="0.8.0")
+app = FastAPI(title="Buddy Computer Forge", version="0.8.0", lifespan=lifespan)
 app.include_router(build_factory_router)
 
 ALLOWED_TASK_TYPES = {
@@ -78,8 +79,8 @@ def get_system_info() -> dict[str, Any]:
     }
 
 
-@app.on_event("startup")
-def startup_event() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     init_db()
     init_build_factory_db()
     WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
@@ -92,6 +93,7 @@ def startup_event() -> None:
     if not WORKSPACE_ROOT.joinpath("mission-brief.json").exists():
         (WORKSPACE_ROOT / "mission-brief.json").write_text(json.dumps({"mission": "demo", "status": "ready"}, indent=2), encoding="utf-8")
 
+    yield
 
 @app.get("/")
 def dashboard() -> HTMLResponse:
