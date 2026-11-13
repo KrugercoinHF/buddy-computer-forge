@@ -14,8 +14,10 @@ from .auth import generate_token, hash_secret, verify_hash
 from .config import CONTAINER_IMAGE, DEFAULT_OWNER_TOKEN, ENABLE_CONTAINERS, SERVER_HOST, SERVER_PORT, WORKSPACE_ROOT
 from .db import execute, fetch_all, fetch_one, get_connection, init_db
 from .workspace import list_workspace_files, parse_payload, read_workspace_file, write_workspace_note
+from .build_factory import init_build_factory_db, router as build_factory_router
 
 app = FastAPI(title="Buddy Computer Forge", version="0.8.0")
+app.include_router(build_factory_router)
 
 ALLOWED_TASK_TYPES = {
     "collect_system_info",
@@ -79,6 +81,7 @@ def get_system_info() -> dict[str, Any]:
 @app.on_event("startup")
 def startup_event() -> None:
     init_db()
+    init_build_factory_db()
     WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
     if not WORKSPACE_ROOT.joinpath("hello.py").exists():
         (WORKSPACE_ROOT / "hello.py").write_text("print('hello from Buddy workspace')\n", encoding="utf-8")
