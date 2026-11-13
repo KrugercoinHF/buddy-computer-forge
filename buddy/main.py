@@ -299,6 +299,8 @@ def claim_task(payload: dict[str, Any], x_buddy_node: str | None = Header(defaul
     node = fetch_one("SELECT * FROM nodes WHERE id = ?", (node_id,))
     if node is None:
         raise HTTPException(status_code=404, detail="node not found")
+    if node["revoked"]:
+        raise HTTPException(status_code=401, detail="node has been revoked")
     if not verify_hash(node_token, node["token_hash"]):
         raise HTTPException(status_code=401, detail="invalid node token")
 
@@ -327,8 +329,8 @@ def renew_lease(task_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     if not task:
         raise HTTPException(status_code=404, detail="task not found")
     node = fetch_one("SELECT * FROM nodes WHERE id = ?", (node_id,))
-    if not node or not verify_hash(node_token, node["token_hash"]):
-        raise HTTPException(status_code=401, detail="invalid node")
+    if not node or node["revoked"] or not verify_hash(node_token, node["token_hash"]):
+        raise HTTPException(status_code=401, detail="invalid or revoked node")
     if task["claimed_by"] != node_id:
         raise HTTPException(status_code=403, detail="task is not claimed by this node")
     lease_until = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
@@ -360,8 +362,8 @@ def submit_task_result(payload: dict[str, Any]) -> dict[str, Any]:
     if not task_id:
         raise HTTPException(status_code=400, detail="task_id required")
     node = fetch_one("SELECT * FROM nodes WHERE id = ?", (node_id,))
-    if not node or not verify_hash(node_token, node["token_hash"]):
-        raise HTTPException(status_code=401, detail="invalid node credential")
+    if not node or node["revoked"] or not verify_hash(node_token, node["token_hash"]):
+        raise HTTPException(status_code=401, detail="invalid or revoked node credential")
     task = fetch_one("SELECT * FROM tasks WHERE id = ?", (task_id,))
     if not task:
         raise HTTPException(status_code=404, detail="task not found")
