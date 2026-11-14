@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://buddy-agency.local/schemas/approval-record-v1.json",
+  "title": "Buddy Agency Approval Record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "approval_id",
+    "approver_id",
+    "action",
+    "target",
+    "scope",
+    "risk_class",
+    "decision",
+    "approved_at",
+    "expires_at"
+  ],
+  "properties": {
+    "approval_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "approver_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "action": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "scope": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      }
+    },
+    "risk_class": {
+      "enum": [
+        "low",
+        "moderate",
+        "high",
+        "critical"
+      ]
+    },
+    "decision": {
+      "enum": [
+        "approved",
+        "denied",
+        "revoked"
+      ]
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rationale": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "request_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}
