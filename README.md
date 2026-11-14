@@ -70,3 +70,18 @@ The isolated Boardroom simulator is available on port 8750:
     uvicorn boardroom_app:app --host 127.0.0.1 --port 8750
 
 Open http://127.0.0.1:8750/. The simulator includes 100 agent profiles, meeting sessions, simulated contributions, advisory voting, minutes and owner-gated proposal decisions. V1 does not connect external AI models or execute actions. See docs/ai-boardroom-simulator-v1.md for architecture and safety boundaries.
+
+
+## Buddy Computer Programming Agent
+
+The drop-in skill definition is at skills/computer-software-programmer/SKILL.md.
+It includes deterministic generation checks, JSONL trace-to-bundle scaffolding,
+bundle integrity verification and refusal/governance rules. See
+docs/multimodal-system-integration-v1.md for the shared image/audio/video/text
+integration boundary. The skill and multimodal design are specifications and
+local tools; they do not register themselves in a runtime or enable model,
+media-capture or computer-execution access.
+
+Run the skill utility tests with:
+
+    node --test tests/skill-tools.test.js
