@@ -1,15 +1,23 @@
-name: Programmer skill tools
+name: Programmer skill and Dev config
 on:
   pull_request:
     paths:
       - "skills/computer-software-programmer/**"
-      - "tests/skill-tools.test.js"
+      - "skills/registry.json"
+      - "wings/dev.json"
+      - "pm/artifacts.json"
+      - "scripts/validate-dev-config.js"
+      - "tests/*.test.js"
       - ".github/workflows/skill-tools.yml"
   push:
     branches: [main]
     paths:
       - "skills/computer-software-programmer/**"
-      - "tests/skill-tools.test.js"
+      - "skills/registry.json"
+      - "wings/dev.json"
+      - "pm/artifacts.json"
+      - "scripts/validate-dev-config.js"
+      - "tests/*.test.js"
       - ".github/workflows/skill-tools.yml"
 jobs:
   node-tool-tests:
@@ -19,4 +27,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: node --test tests/skill-tools.test.js
+      - run: node --test tests/*.test.js
+      - run: node scripts/validate-dev-config.js
