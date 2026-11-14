@@ -323,3 +323,21 @@ As of this architecture record:
 8. Run the seven-day pilot; publish observed results separately from the synthetic simulation.
 
 **North-star outcome:** The owner can see what was attempted, what actually worked, what was learned, what changed because of that learning, how much owner effort it took, and what should happen next.
+
+
+## 14. Buddy Computer Programming Agent and multimodal integration
+
+The computer-software-programmer skill is the governed construction agent for
+Buddy Agency software work. Its drop-in definition and Node.js integrity tools
+live under skills/computer-software-programmer/. It prepares code, contracts,
+tests and handoff instructions; it does not independently run, merge, deploy
+or enable computer control.
+
+The shared multimodal boundary is specified in
+docs/multimodal-system-integration-v1.md. It separates immutable source media,
+deterministic inspection, derived model annotations, human-confirmed ground
+truth and owner-gated task proposals. The Boardroom consumes selected evidence
+references rather than unrestricted raw media or tool access.
+
+Implementation status: SPEC. No media capture, cloud upload, provider inference,
+multimodal API routes or computer execution are enabled by this architecture.
