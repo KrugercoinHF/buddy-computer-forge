@@ -1,0 +1,63 @@
+{
+  "format": "boardroom-artifacts/v1",
+  "source_of_truth": "chronicle.dev.event",
+  "projection_state": "declarative",
+  "runtime_projection_enabled": false,
+  "lifecycle_levels": ["SPEC", "SCAFFOLDED", "RUNNING", "MAINTAINED"],
+  "promotion_policy": {
+    "SPEC": { "requires": ["complete_specification"], "approvers": ["owner"] },
+    "SCAFFOLDED": { "requires": ["artifact_exists", "builder_run_output", "builder_exit_code_0"], "approvers": ["owner"] },
+    "RUNNING": { "requires": ["owner_run_output", "owner_exit_code_0", "verification_command", "artifact_sha256"], "approvers": ["owner"] },
+    "MAINTAINED": { "requires": ["production_observation_days>=7", "monitoring_evidence", "no_open_regressions"], "approvers": ["owner", "cto"] }
+  },
+  "transition_rules": {
+    "strictly_ordered": true,
+    "skip_levels": false,
+    "missing_evidence_blocks_promotion": true,
+    "ci_success_alone_promotes": false,
+    "agent_assertion_alone_promotes": false,
+    "owner_output_must_be_pasted_or_attached": true
+  },
+  "event_contract": {
+    "stream": "dev.event",
+    "event_types": ["artifact.created", "artifact.reviewed", "artifact.promoted", "artifact.blocked", "skill.activated", "release.requested", "release.decided"],
+    "append_only": true,
+    "ledger_implementation": "not_connected"
+  },
+  "artifacts": [
+    {
+      "id": "boardroom-simulator",
+      "name": "Buddy AI Boardroom Simulator",
+      "wing": "dev",
+      "owner_agent": "A-implementer",
+      "reviewers": ["A-reviewer", "A-tester"],
+      "path": "boardroom_app.py",
+      "related_paths": ["boardroom_dashboard.html", "docs/ai-boardroom-simulator-v1.md", "tests/test_boardroom.py"],
+      "level": "SPEC",
+      "verification_observation": "GitHub Actions test run previously passed; this is not an owner-run promotion record.",
+      "level_history": [{ "level": "SPEC", "at": "2026-11-14T00:00:00Z", "by": "owner", "reason": "Owner lifecycle record initialized; local owner verification not supplied." }],
+      "verification_command": "python -m pip install -e '.[test]' && pytest -q tests/test_boardroom.py",
+      "artifact_sha256": null,
+      "owner_evidence": null,
+      "blocked_on": "owner runs the Boardroom locally and supplies the output",
+      "dependent_artifacts": []
+    },
+    {
+      "id": "computer-software-programmer-skill",
+      "name": "@ComputerSoftwareProgrammerSkill",
+      "wing": "dev",
+      "owner_agent": "A-implementer",
+      "reviewers": ["A-reviewer", "A-tester"],
+      "path": "skills/computer-software-programmer/",
+      "related_paths": ["skills/computer-software-programmer/SKILL.md", "tests/skill-tools.test.js"],
+      "level": "SPEC",
+      "verification_observation": "Skill utility CI tests passed; owner-local verification and an exported player bundle have not been supplied.",
+      "level_history": [{ "level": "SPEC", "at": "2026-11-14T00:00:00Z", "by": "owner", "reason": "Owner lifecycle record initialized; local owner verification not supplied." }],
+      "verification_command": "node --test tests/skill-tools.test.js && node skills/computer-software-programmer/scripts/verify-bundle.js <bundle.json>",
+      "artifact_sha256": null,
+      "owner_evidence": null,
+      "blocked_on": "owner runs the skill tests and verifies an exported player bundle",
+      "dependent_artifacts": []
+    }
+  ]
+}
