@@ -60,3 +60,13 @@ pytest
 - Keep owner token in a secret manager.
 - Container execution is disabled by default.
 - Worker file reads are confined to the workspace root.
+
+
+## AI Boardroom Simulator V1
+
+The isolated Boardroom simulator is available on port 8750:
+
+    export BOARDROOM_OWNER_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+    uvicorn boardroom_app:app --host 127.0.0.1 --port 8750
+
+Open http://127.0.0.1:8750/. The simulator includes 100 agent profiles, meeting sessions, simulated contributions, advisory voting, minutes and owner-gated proposal decisions. V1 does not connect external AI models or execute actions. See docs/ai-boardroom-simulator-v1.md for architecture and safety boundaries.
