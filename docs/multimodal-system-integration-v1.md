@@ -109,3 +109,37 @@ confirmation events; revocation/deletion; Boardroom evidence references without
 raw-media duplication; no action gateway reachable from media processing; tests
 for auth, consent denial, malformed media, duplicate jobs, provider failure,
 retention expiry and audit lineage.
+
+
+## Provider implementation notes — reviewed 2026-11-14
+
+The first optional provider adapter can target OpenAI, while the core contracts
+remain vendor-neutral:
+
+- Image understanding: the Responses API accepts text and image inputs; images
+  can be supplied by URL, Base64 data URL or Files API file ID. Use the
+  documented input_image content type and pin supported detail settings.
+- Recorded audio: use the dedicated file-transcription workflow when the output
+  needed is a transcript, rather than routing every file through a live agent.
+- Live voice: use GPT-Live for a conversational voice experience or the Realtime
+  API where direct session, transport and tool control is required. For browser
+  sessions, create ephemeral credentials server-side; never expose the API key.
+- Video understanding: treat video as a media pipeline. Extract a timestamped
+  frame sequence and audio track, process those through image and audio adapters,
+  then join annotations by source asset and time range. The Responses overview
+  documents text/image inputs; do not assume arbitrary raw video upload is a
+  supported Responses input.
+- Do not start a new integration on the Assistants API: OpenAI documents its
+  sunset on 2026-08-26 and directs new integrations to the Responses API.
+
+These notes are a provider option, not a vendor lock-in decision. Confirm the
+selected model's current modality, file-size, region, retention, cost and rate
+limits immediately before implementation.
+
+### Official references
+
+- Images and vision: https://developers.openai.com/api/docs/guides/images-vision
+- Audio and voice workflow selection: https://developers.openai.com/api/docs/guides/audio
+- Realtime API, WebRTC and ephemeral credentials: https://developers.openai.com/api/docs/guides/realtime
+- Responses API supported input overview: https://developers.openai.com/api/reference/responses/overview
+- Assistants API migration/sunset: https://platform.openai.com/docs/assistants/migration
