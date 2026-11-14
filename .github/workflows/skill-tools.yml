@@ -1,0 +1,22 @@
+name: Programmer skill tools
+on:
+  pull_request:
+    paths:
+      - "skills/computer-software-programmer/**"
+      - "tests/skill-tools.test.js"
+      - ".github/workflows/skill-tools.yml"
+  push:
+    branches: [main]
+    paths:
+      - "skills/computer-software-programmer/**"
+      - "tests/skill-tools.test.js"
+      - ".github/workflows/skill-tools.yml"
+jobs:
+  node-tool-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node --test tests/skill-tools.test.js
