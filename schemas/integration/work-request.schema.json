@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://buddy-agency.local/schemas/work-request-v1.json",
+  "title": "Buddy Agency Work Request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "correlation_id",
+    "schema_version",
+    "source_project",
+    "target_project",
+    "requested_capability",
+    "task_summary",
+    "risk_class",
+    "created_at",
+    "expires_at"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "correlation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "source_project": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "target_project": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "requested_capability": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "task_summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "input_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      },
+      "maxItems": 50
+    },
+    "risk_class": {
+      "enum": [
+        "low",
+        "moderate",
+        "high",
+        "critical"
+      ]
+    },
+    "approval_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
