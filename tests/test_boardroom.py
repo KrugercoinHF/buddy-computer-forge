@@ -69,3 +69,26 @@ def test_owner_decision_is_required_and_never_executes(client):
 def test_invalid_agent_selection_is_rejected(client):
     response = client.post("/api/meetings", json={"topic": "Test invalid agent", "agent_ids": ["AG-999"]})
     assert response.status_code == 422
+
+
+def test_dashboard_serves_the_interactive_boardroom_application(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "Convene &amp; run meeting" in response.text or "Convene & run meeting" in response.text
+    assert "function startMeeting" in response.text
+    assert "/api/meetings" in response.text
+
+
+def test_minutes_are_sha256_verifiable_and_p0_gate_passes(client):
+    created = client.post("/api/meetings", json={
+        "topic": "Verify evidence and safety gate", "participant_count": 5,
+    }).json()
+    meeting = client.post(f"/api/meetings/{created['id']}/run").json()
+    assert meeting["safety_gate"]["id"] == "P0"
+    assert meeting["safety_gate"]["status"] == "pass"
+    assert all(item["passed"] for item in meeting["safety_gate"]["checks"])
+    assert len(meeting["minutes_sha256"]) == 64
+    verified = client.get(f"/api/meetings/{created['id']}/verify")
+    assert verified.status_code == 200
+    assert verified.json()["valid"] is True
+    assert verified.json()["sha256"] == meeting["minutes_sha256"]

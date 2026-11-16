@@ -1,6 +1,6 @@
 """AI Boardroom Simulator V1 — isolated, local-first simulation service."""
 from __future__ import annotations
-import json, os, secrets, sqlite3, uuid
+import hashlib, json, os, secrets, sqlite3, uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -8,7 +8,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
 DEFAULT_DB = Path("data/boardroom.sqlite3")
 DASHBOARD_PATH = Path(__file__).parent / "boardroom.html"
 PLAYER_PATH = Path(__file__).parent / "player.html"
@@ -16,6 +16,29 @@ app = FastAPI(title="Buddy AI Boardroom Simulator", version=APP_VERSION)
 
 def now_utc() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# P0 is a hard safety floor for this simulator. Enabling live providers or
+# execution requires a separately reviewed implementation, not an env toggle.
+LIVE_PROVIDER_ENABLED = False
+EXECUTION_ENABLED = False
+
+
+def canonical_sha256(value: Any) -> str:
+    canonical = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def p0_preflight() -> dict[str, Any]:
+    checks = [
+        {"id": "simulation_only", "passed": not LIVE_PROVIDER_ENABLED},
+        {"id": "execution_disabled", "passed": not EXECUTION_ENABLED},
+        {"id": "owner_decisions_gated", "passed": True},
+    ]
+    if not all(item["passed"] for item in checks):
+        raise HTTPException(status_code=503, detail="P0 safety gate blocked this meeting.")
+    return {"id": "P0", "status": "pass", "checks": checks,
+            "policy": "simulation-only; no external provider calls or execution"}
 
 def db_path() -> Path:
     return Path(os.getenv("BOARDROOM_DB_PATH", str(DEFAULT_DB)))
@@ -130,6 +153,7 @@ def simulate_contribution(agent: dict[str, Any], index: int) -> dict[str, Any]:
         "provider":"simulation"}
 
 def run_simulation(meeting: dict[str, Any]) -> dict[str, Any]:
+    meeting["safety_gate"] = p0_preflight()
     chosen = [AGENT_BY_ID[x] for x in meeting["agent_ids"]]
     contributions = [simulate_contribution(agent, i) for i, agent in enumerate(chosen)]
     counts = {"support_with_conditions":0,"needs_more_evidence":0,"challenge":0}
@@ -149,6 +173,7 @@ def run_simulation(meeting: dict[str, Any]) -> dict[str, Any]:
             "What is the smallest safe pilot and how will it be rolled back?",
             "Who owns each follow-up and when will progress be reviewed?"],
         "recorded_at":now_utc()}
+    meeting["minutes_sha256"] = canonical_sha256(meeting["minutes"])
     meeting["proposals"] = [
         {"id":str(uuid.uuid4()),"title":"Prepare an evidence and readiness checklist",
          "description":"Collect test results, security findings, operating assumptions and measurable acceptance criteria.",
@@ -213,6 +238,17 @@ def list_meetings() -> dict[str, Any]:
 @app.get("/api/meetings/{meeting_id}")
 def get_meeting(meeting_id: str) -> dict[str, Any]:
     return load_meeting(meeting_id)
+
+@app.get("/api/meetings/{meeting_id}/verify")
+def verify_meeting(meeting_id: str) -> dict[str, Any]:
+    meeting = load_meeting(meeting_id)
+    if not meeting.get("minutes") or not meeting.get("minutes_sha256"):
+        raise HTTPException(status_code=409, detail="Meeting has no hashed minutes to verify.")
+    actual = canonical_sha256(meeting["minutes"])
+    expected = meeting["minutes_sha256"]
+    valid = secrets.compare_digest(actual, expected)
+    return {"meeting_id": meeting_id, "valid": valid, "sha256": actual,
+            "p0_gate": meeting.get("safety_gate", {"status": "missing"})}
 
 @app.post("/api/meetings/{meeting_id}/run")
 def run_meeting(meeting_id: str) -> dict[str, Any]:

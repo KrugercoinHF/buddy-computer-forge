@@ -5,7 +5,7 @@ Branch: feat/ai-boardroom-simulator-v1
 Status: declarative architecture plus local validation tools. File presence is not runtime evidence.
 
 ## Authority and safety
-The existing Python service in boardroom_app.py is the application foundation. boardroom.html is a static entry surface. Agent output remains simulation unless a provider adapter is separately implemented, configured and verified. Nothing here authorizes autonomous execution, deployment, external messaging or computer control.
+The existing Python service in boardroom_app.py is the application foundation. boardroom.html is the interactive entry surface; its API-backed actions are local-only. Agent output remains simulation unless a provider adapter is separately implemented, configured and verified. Nothing here authorizes autonomous execution, deployment, external messaging or computer control.
 
 ## Contracts
 - wings/*.json: declarative functional-wing metadata; dev is the meta-wing.
