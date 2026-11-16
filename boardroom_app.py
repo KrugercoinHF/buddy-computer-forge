@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field
 
 APP_VERSION = "0.1.0"
 DEFAULT_DB = Path("data/boardroom.sqlite3")
-DASHBOARD_PATH = Path(__file__).parent / "boardroom_dashboard.html"
+DASHBOARD_PATH = Path(__file__).parent / "boardroom.html"
+PLAYER_PATH = Path(__file__).parent / "player.html"
 app = FastAPI(title="Buddy AI Boardroom Simulator", version=APP_VERSION)
 
 def now_utc() -> str:
@@ -165,6 +166,12 @@ def dashboard() -> str:
     if not DASHBOARD_PATH.exists():
         return "<h1>Buddy AI Boardroom</h1><p>Dashboard asset is missing.</p>"
     return DASHBOARD_PATH.read_text(encoding="utf-8")
+
+@app.get("/player", response_class=HTMLResponse)
+def replay_player() -> str:
+    if not PLAYER_PATH.exists():
+        return "<h1>Boardroom Replay</h1><p>Player asset is missing.</p>"
+    return PLAYER_PATH.read_text(encoding="utf-8")
 
 @app.get("/api/health")
 def health() -> dict[str, Any]:

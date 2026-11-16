@@ -37,4 +37,5 @@ jobs:
           path: 10-runs.json
           if-no-files-found: error
       - name: P10 release gate
-        run: node -e "const p=require('./wings/dev.json'); if(p.release_policy.deployment_enabled || p.release_policy.computer_execution_enabled) process.exit(1); console.log('P10 PASS: deployment and computer execution remain disabled')"
+        run: |
+          node -e 'const p = require("./wings/dev.json"); if (p.release_policy.deployment_enabled || p.release_policy.computer_execution_enabled) process.exit(1); console.log("P10 PASS: deployment and computer execution remain disabled")'

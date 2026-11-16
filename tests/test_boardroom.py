@@ -23,6 +23,16 @@ def test_health_and_full_agent_directory(client):
     assert agents["agents"][0]["short_name"] == "CEO"
 
 
+def test_boardroom_and_replay_pages_are_served(client):
+    home = client.get("/")
+    replay = client.get("/player")
+    assert home.status_code == 200
+    assert "AI Boardroom" in home.text
+    assert replay.status_code == 200
+    assert "Boardroom Replay" in replay.text
+    assert "read-only" in replay.text.lower()
+
+
 def test_meeting_simulation_creates_minutes_and_gated_proposals(client):
     created = client.post("/api/meetings", json={
         "topic": "Assess controlled beta readiness",
