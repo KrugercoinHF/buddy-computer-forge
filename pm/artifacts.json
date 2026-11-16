@@ -3,12 +3,53 @@
   "source_of_truth": "chronicle.dev.event",
   "projection_state": "declarative",
   "runtime_projection_enabled": false,
-  "lifecycle_levels": ["SPEC", "SCAFFOLDED", "RUNNING", "MAINTAINED"],
+  "lifecycle_levels": [
+    "SPEC",
+    "SCAFFOLDED",
+    "RUNNING",
+    "MAINTAINED"
+  ],
   "promotion_policy": {
-    "SPEC": { "requires": ["complete_specification"], "approvers": ["owner"] },
-    "SCAFFOLDED": { "requires": ["artifact_exists", "builder_run_output", "builder_exit_code_0"], "approvers": ["owner"] },
-    "RUNNING": { "requires": ["owner_run_output", "owner_exit_code_0", "verification_command", "artifact_sha256"], "approvers": ["owner"] },
-    "MAINTAINED": { "requires": ["production_observation_days>=7", "monitoring_evidence", "no_open_regressions"], "approvers": ["owner", "cto"] }
+    "SPEC": {
+      "requires": [
+        "complete_specification"
+      ],
+      "approvers": [
+        "owner"
+      ]
+    },
+    "SCAFFOLDED": {
+      "requires": [
+        "artifact_exists",
+        "builder_run_output",
+        "builder_exit_code_0"
+      ],
+      "approvers": [
+        "owner"
+      ]
+    },
+    "RUNNING": {
+      "requires": [
+        "owner_run_output",
+        "owner_exit_code_0",
+        "verification_command",
+        "artifact_sha256"
+      ],
+      "approvers": [
+        "owner"
+      ]
+    },
+    "MAINTAINED": {
+      "requires": [
+        "production_observation_days>=7",
+        "monitoring_evidence",
+        "no_open_regressions"
+      ],
+      "approvers": [
+        "owner",
+        "cto"
+      ]
+    }
   },
   "transition_rules": {
     "strictly_ordered": true,
@@ -20,7 +61,15 @@
   },
   "event_contract": {
     "stream": "dev.event",
-    "event_types": ["artifact.created", "artifact.reviewed", "artifact.promoted", "artifact.blocked", "skill.activated", "release.requested", "release.decided"],
+    "event_types": [
+      "artifact.created",
+      "artifact.reviewed",
+      "artifact.promoted",
+      "artifact.blocked",
+      "skill.activated",
+      "release.requested",
+      "release.decided"
+    ],
     "append_only": true,
     "ledger_implementation": "not_connected"
   },
@@ -30,33 +79,274 @@
       "name": "Buddy AI Boardroom Simulator",
       "wing": "dev",
       "owner_agent": "A-implementer",
-      "reviewers": ["A-reviewer", "A-tester"],
+      "reviewers": [
+        "A-reviewer",
+        "A-tester"
+      ],
       "path": "boardroom_app.py",
-      "related_paths": ["boardroom_dashboard.html", "docs/ai-boardroom-simulator-v1.md", "tests/test_boardroom.py"],
       "level": "SPEC",
-      "verification_observation": "GitHub Actions test run previously passed; this is not an owner-run promotion record.",
-      "level_history": [{ "level": "SPEC", "at": "2026-11-14T00:00:00Z", "by": "owner", "reason": "Owner lifecycle record initialized; local owner verification not supplied." }],
-      "verification_command": "python -m pip install -e '.[test]' && pytest -q tests/test_boardroom.py",
+      "level_history": [
+        {
+          "level": "SPEC",
+          "at": "2026-11-16T00:00:00Z",
+          "by": "owner",
+          "reason": "Declared in architecture target; runtime evidence has not been submitted."
+        }
+      ],
+      "verification_command": null,
       "artifact_sha256": null,
       "owner_evidence": null,
-      "blocked_on": "owner runs the Boardroom locally and supplies the output",
+      "blocked_on": "owner-run evidence and review required before promotion",
       "dependent_artifacts": []
     },
     {
-      "id": "computer-software-programmer-skill",
-      "name": "@ComputerSoftwareProgrammerSkill",
+      "id": "boardroom-entry-ui",
+      "name": "Boardroom entry interface",
       "wing": "dev",
       "owner_agent": "A-implementer",
-      "reviewers": ["A-reviewer", "A-tester"],
-      "path": "skills/computer-software-programmer/",
-      "related_paths": ["skills/computer-software-programmer/SKILL.md", "tests/skill-tools.test.js"],
+      "reviewers": [
+        "A-reviewer",
+        "A-tester"
+      ],
+      "path": "boardroom.html",
       "level": "SPEC",
-      "verification_observation": "Skill utility CI tests passed; owner-local verification and an exported player bundle have not been supplied.",
-      "level_history": [{ "level": "SPEC", "at": "2026-11-14T00:00:00Z", "by": "owner", "reason": "Owner lifecycle record initialized; local owner verification not supplied." }],
-      "verification_command": "node --test tests/skill-tools.test.js && node skills/computer-software-programmer/scripts/verify-bundle.js <bundle.json>",
+      "level_history": [
+        {
+          "level": "SPEC",
+          "at": "2026-11-16T00:00:00Z",
+          "by": "owner",
+          "reason": "Declared in architecture target; runtime evidence has not been submitted."
+        }
+      ],
+      "verification_command": null,
       "artifact_sha256": null,
       "owner_evidence": null,
-      "blocked_on": "owner runs the skill tests and verifies an exported player bundle",
+      "blocked_on": "owner-run evidence and review required before promotion",
+      "dependent_artifacts": []
+    },
+    {
+      "id": "boardroom-replay-player",
+      "name": "Read-only replay player",
+      "wing": "dev",
+      "owner_agent": "A-implementer",
+      "reviewers": [
+        "A-reviewer",
+        "A-tester"
+      ],
+      "path": "player.html",
+      "level": "SPEC",
+      "level_history": [
+        {
+          "level": "SPEC",
+          "at": "2026-11-16T00:00:00Z",
+          "by": "owner",
+          "reason": "Declared in architecture target; runtime evidence has not been submitted."
+        }
+      ],
+      "verification_command": null,
+      "artifact_sha256": null,
+      "owner_evidence": null,
+      "blocked_on": "owner-run evidence and review required before promotion",
+      "dependent_artifacts": []
+    },
+    {
+      "id": "boardroom-skill-runner",
+      "name": "Boardroom skill runner",
+      "wing": "dev",
+      "owner_agent": "A-implementer",
+      "reviewers": [
+        "A-reviewer",
+        "A-tester"
+      ],
+      "path": "skill.js",
+      "level": "SPEC",
+      "level_history": [
+        {
+          "level": "SPEC",
+          "at": "2026-11-16T00:00:00Z",
+          "by": "owner",
+          "reason": "Declared in architecture target; runtime evidence has not been submitted."
+        }
+      ],
+      "verification_command": null,
+      "artifact_sha256": null,
+      "owner_evidence": null,
+      "blocked_on": "owner-run evidence and review required before promotion",
+      "dependent_artifacts": []
+    },
+    {
+      "id": "calibration-harness",
+      "name": "Ten-run calibration harness",
+      "wing": "dev",
+      "owner_agent": "A-implementer",
+      "reviewers": [
+        "A-reviewer",
+        "A-tester"
+      ],
+      "path": "calibrate.js",
+      "level": "SPEC",
+      "level_history": [
+        {
+          "level": "SPEC",
+          "at": "2026-11-16T00:00:00Z",
+          "by": "owner",
+          "reason": "Declared in architecture target; runtime evidence has not been submitted."
+        }
+      ],
+      "verification_command": null,
+      "artifact_sha256": null,
+      "owner_evidence": null,
+      "blocked_on": "owner-run evidence and review required before promotion",
+      "dependent_artifacts": []
+    },
+    {
+      "id": "media-ingest-scaffold",
+      "name": "Video and audio ingest scaffold",
+      "wing": "dev",
+      "owner_agent": "A-implementer",
+      "reviewers": [
+        "A-reviewer",
+        "A-tester"
+      ],
+      "path": "ingest.js",
+      "level": "SPEC",
+      "level_history": [
+        {
+          "level": "SPEC",
+          "at": "2026-11-16T00:00:00Z",
+          "by": "owner",
+          "reason": "Declared in architecture target; runtime evidence has not been submitted."
+        }
+      ],
+      "verification_command": null,
+      "artifact_sha256": null,
+      "owner_evidence": null,
+      "blocked_on": "owner-run evidence and review required before promotion",
+      "dependent_artifacts": []
+    },
+    {
+      "id": "architecture-poster",
+      "name": "Boardroom architecture poster",
+      "wing": "dev",
+      "owner_agent": "A-implementer",
+      "reviewers": [
+        "A-reviewer",
+        "A-tester"
+      ],
+      "path": "buddy-poster.svg",
+      "level": "SPEC",
+      "level_history": [
+        {
+          "level": "SPEC",
+          "at": "2026-11-16T00:00:00Z",
+          "by": "owner",
+          "reason": "Declared in architecture target; runtime evidence has not been submitted."
+        }
+      ],
+      "verification_command": null,
+      "artifact_sha256": null,
+      "owner_evidence": null,
+      "blocked_on": "owner-run evidence and review required before promotion",
+      "dependent_artifacts": []
+    },
+    {
+      "id": "functional-wings",
+      "name": "Functional wing configuration set",
+      "wing": "dev",
+      "owner_agent": "A-implementer",
+      "reviewers": [
+        "A-reviewer",
+        "A-tester"
+      ],
+      "path": "wings/",
+      "level": "SPEC",
+      "level_history": [
+        {
+          "level": "SPEC",
+          "at": "2026-11-16T00:00:00Z",
+          "by": "owner",
+          "reason": "Declared in architecture target; runtime evidence has not been submitted."
+        }
+      ],
+      "verification_command": null,
+      "artifact_sha256": null,
+      "owner_evidence": null,
+      "blocked_on": "owner-run evidence and review required before promotion",
+      "dependent_artifacts": []
+    },
+    {
+      "id": "terminal-readonly-skill",
+      "name": "Read-only terminal skill",
+      "wing": "dev",
+      "owner_agent": "A-implementer",
+      "reviewers": [
+        "A-reviewer",
+        "A-tester"
+      ],
+      "path": "skills/terminal/",
+      "level": "SPEC",
+      "level_history": [
+        {
+          "level": "SPEC",
+          "at": "2026-11-16T00:00:00Z",
+          "by": "owner",
+          "reason": "Declared in architecture target; runtime evidence has not been submitted."
+        }
+      ],
+      "verification_command": null,
+      "artifact_sha256": null,
+      "owner_evidence": null,
+      "blocked_on": "owner-run evidence and review required before promotion",
+      "dependent_artifacts": []
+    },
+    {
+      "id": "evidence-ci-workflow",
+      "name": "Evidence validation workflow",
+      "wing": "dev",
+      "owner_agent": "A-implementer",
+      "reviewers": [
+        "A-reviewer",
+        "A-tester"
+      ],
+      "path": ".github/workflows/evidence.yml",
+      "level": "SPEC",
+      "level_history": [
+        {
+          "level": "SPEC",
+          "at": "2026-11-16T00:00:00Z",
+          "by": "owner",
+          "reason": "Declared in architecture target; runtime evidence has not been submitted."
+        }
+      ],
+      "verification_command": null,
+      "artifact_sha256": null,
+      "owner_evidence": null,
+      "blocked_on": "owner-run evidence and review required before promotion",
+      "dependent_artifacts": []
+    },
+    {
+      "id": "chatgpt-evidence-contract",
+      "name": "Read-only evidence API contract",
+      "wing": "dev",
+      "owner_agent": "A-implementer",
+      "reviewers": [
+        "A-reviewer",
+        "A-tester"
+      ],
+      "path": "chatgpt/openapi.yaml",
+      "level": "SPEC",
+      "level_history": [
+        {
+          "level": "SPEC",
+          "at": "2026-11-16T00:00:00Z",
+          "by": "owner",
+          "reason": "Declared in architecture target; runtime evidence has not been submitted."
+        }
+      ],
+      "verification_command": null,
+      "artifact_sha256": null,
+      "owner_evidence": null,
+      "blocked_on": "owner-run evidence and review required before promotion",
       "dependent_artifacts": []
     }
   ]

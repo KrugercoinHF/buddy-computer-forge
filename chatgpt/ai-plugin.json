@@ -1,0 +1,19 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Buddy Boardroom Evidence",
+  "name_for_model": "buddy_boardroom_evidence",
+  "description_for_human": "Read-only access to approved Boardroom status and evidence.",
+  "description_for_model": "Read-only evidence API. No shell, deployment, file mutation or computer-control operations are exposed.",
+  "auth": {
+    "type": "service_http",
+    "authorization_type": "bearer"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://REPLACE-WITH-YOUR-DEPLOYED-HOST/openapi.yaml",
+    "is_user_authenticated": true
+  },
+  "logo_url": "https://REPLACE-WITH-YOUR-DEPLOYED-HOST/logo.png",
+  "contact_email": "REPLACE-WITH-A-MAINTAINER-CONTACT",
+  "legal_info_url": "https://REPLACE-WITH-YOUR-DEPLOYED-HOST/legal"
+}

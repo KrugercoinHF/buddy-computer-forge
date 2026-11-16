@@ -1,0 +1,36 @@
+{
+  "id": "data",
+  "class": "functional",
+  "status": "declared",
+  "agents": [
+    "DATA-steward",
+    "DATA-quality",
+    "DATA-platform",
+    "DATA-governance"
+  ],
+  "hud_lanes": [
+    "contracts",
+    "quality",
+    "lineage",
+    "shared-keys"
+  ],
+  "reporting_window": "continuous",
+  "kpi_pack": [
+    "schema_conformance",
+    "data_quality",
+    "lineage_coverage"
+  ],
+  "gates": [
+    "P0",
+    "P2"
+  ],
+  "shared_entity_keys_owner": true,
+  "notes": "Keystone data wing owns shared entity-key definitions and versioned schema contracts.",
+  "resources": [
+    "R-repo",
+    "R-shared-ledger",
+    "R-cost-events"
+  ],
+  "cost_event_required": true,
+  "approval_required": true
+}

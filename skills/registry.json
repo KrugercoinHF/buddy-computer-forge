@@ -7,7 +7,11 @@
       "id": "computer-software-programmer",
       "version": "1.0.0",
       "owner_wing": "dev",
-      "bound_agents": ["A-architect", "A-implementer", "A-reviewer"],
+      "bound_agents": [
+        "A-architect",
+        "A-implementer",
+        "A-reviewer"
+      ],
       "registration_state": "declared",
       "entrypoint": "skills/computer-software-programmer/SKILL.md",
       "tools": [
@@ -26,12 +30,55 @@
         "R8:no-silent-scope-expansion",
         "R9:no-production-secrets"
       ],
-      "gates_enforced": ["P5", "P10-release"],
-      "activation_log": "chronicle://dev-skill-activations",
-      "status_contract": ["SPEC", "SCAFFOLDED", "RUNNING", "MAINTAINED"],
+      "gates_enforced": [
+        "P5",
+        "P10-release"
+      ],
+      "status_contract": [
+        "SPEC",
+        "SCAFFOLDED",
+        "RUNNING",
+        "MAINTAINED"
+      ],
       "registered_at": null,
       "confirmed_by": null,
-      "activation_note": "Declarative registry entry only. Runtime loading and automatic refusal-rule propagation are not implemented."
+      "activation_note": "Declarative registry entry only; runtime loading is not implemented."
+    },
+    {
+      "id": "terminal",
+      "version": "1.0.0",
+      "owner_wing": "dev",
+      "bound_agents": [
+        "A-implementer",
+        "A-reviewer"
+      ],
+      "registration_state": "declared",
+      "entrypoint": "skills/terminal/SKILL.md",
+      "tools": [
+        "skills/terminal/scripts/terminal-cli.js"
+      ],
+      "refusal_rules": [
+        "T1:no-arbitrary-shell",
+        "T2:no-unapproved-writes",
+        "T3:path-confinement",
+        "T4:no-secret-reads",
+        "T5:no-network-or-computer-control",
+        "T6:no-destructive-or-github-mutations",
+        "T7:no-claimed-execution"
+      ],
+      "gates_enforced": [
+        "P5",
+        "P10-release"
+      ],
+      "status_contract": [
+        "SPEC",
+        "SCAFFOLDED",
+        "RUNNING",
+        "MAINTAINED"
+      ],
+      "registered_at": null,
+      "confirmed_by": null,
+      "activation_note": "Read-only local CLI; registry remains declarative and is not auto-loaded."
     }
   ]
 }

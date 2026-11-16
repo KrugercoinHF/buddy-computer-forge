@@ -3,3 +3,13 @@ __pycache__/
 .venv/
 data/
 *.sqlite3
+.env
+.env.*
+!.env.example
+node_modules/
+poster-output/
+10-runs.json
+*.mp4
+*.mov
+*.wav
+*.mp3

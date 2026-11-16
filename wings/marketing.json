@@ -1,0 +1,40 @@
+{
+  "id": "marketing",
+  "class": "functional",
+  "status": "declared",
+  "agents": [
+    "MKT-strategy",
+    "MKT-content",
+    "MKT-research",
+    "MKT-brand",
+    "MKT-growth",
+    "MKT-analytics",
+    "MKT-campaigns",
+    "MKT-ops"
+  ],
+  "hud_lanes": [
+    "brief",
+    "research",
+    "campaign",
+    "roi"
+  ],
+  "reporting_window": "campaign_phase",
+  "kpi_pack": [
+    "campaign_roi",
+    "qualified_reach",
+    "conversion_rate"
+  ],
+  "gates": [
+    "P0",
+    "P1",
+    "P6"
+  ],
+  "notes": "ROI is an observed calculation, not an attribution claim without source data.",
+  "resources": [
+    "R-repo",
+    "R-shared-ledger",
+    "R-cost-events"
+  ],
+  "cost_event_required": true,
+  "approval_required": true
+}

@@ -1,0 +1,37 @@
+{
+  "id": "ops",
+  "class": "functional",
+  "status": "declared",
+  "agents": [
+    "OPS-planning",
+    "OPS-scheduling",
+    "OPS-quality",
+    "OPS-service",
+    "OPS-continuity"
+  ],
+  "hud_lanes": [
+    "intake",
+    "shifts",
+    "delivery",
+    "sla"
+  ],
+  "reporting_window": "shift",
+  "kpi_pack": [
+    "sla_attainment",
+    "throughput",
+    "rework_rate"
+  ],
+  "gates": [
+    "P0",
+    "P2",
+    "P6"
+  ],
+  "notes": "Shift and SLA views are declarative; no scheduling integration is enabled.",
+  "resources": [
+    "R-repo",
+    "R-shared-ledger",
+    "R-cost-events"
+  ],
+  "cost_event_required": true,
+  "approval_required": true
+}
