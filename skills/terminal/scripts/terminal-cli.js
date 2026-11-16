@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 "use strict";
 const fs=require("node:fs"),path=require("node:path"),crypto=require("node:crypto"),{spawnSync}=require("node:child_process");
-const root=path.resolve(__dirname,"../../..");
-function safe(p){const r=path.resolve(root,p||".");if(r!==root&&!r.startsWith(root+path.sep))throw Error("T3 refusal: path escapes repository root");return r}
+const root=fs.realpathSync(path.resolve(__dirname,"../../.."));
+function safe(p){const candidate=path.resolve(root,p||".");if(candidate!==root&&!candidate.startsWith(root+path.sep))throw Error("T3 refusal: path escapes repository root");const resolved=fs.realpathSync(candidate);if(resolved!==root&&!resolved.startsWith(root+path.sep))throw Error("T3 refusal: symlink escapes repository root");const rel=path.relative(root,resolved).split(path.sep);if(rel.some(x=>/^\.env($|\.)/i.test(x)||/secret|credential|token|private.?key/i.test(x))||rel.includes("data"))throw Error("T4 refusal: sensitive paths are not readable");return resolved}
 const cmd=process.argv[2]||"help",arg=process.argv[3];
 function run(args){const r=spawnSync(process.execPath,args,{cwd:root,encoding:"utf8"});process.stdout.write(r.stdout||"");process.stderr.write(r.stderr||"");return r.status??1}
 try{switch(cmd){
