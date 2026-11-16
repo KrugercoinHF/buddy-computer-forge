@@ -1,0 +1,41 @@
+name: Boardroom evidence checks
+on:
+  pull_request:
+    paths: ["skill.js","calibrate.js","wings/**","skills/**","pm/**","references/**","rubric/**","boardroom.html","player.html",".github/workflows/evidence.yml"]
+  push:
+    branches: [main]
+    paths: ["skill.js","calibrate.js","wings/**","skills/**","pm/**","references/**","rubric/**","boardroom.html","player.html"]
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Syntax checks
+        run: |
+          node --check skill.js
+          node --check calibrate.js
+          node --check ingest.js
+          node --check skills/terminal/scripts/terminal-cli.js
+      - name: Presence score
+        run: node skill.js score
+      - name: Verify JSON contracts
+        run: node skill.js verify
+      - name: Determinism fixture
+        run: node skill.js determinism
+      - name: Read-only terminal registry
+        run: node skills/terminal/scripts/terminal-cli.js registry
+      - name: Ten-run calibration fixture
+        run: node calibrate.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: boardroom-calibration
+          path: 10-runs.json
+          if-no-files-found: error
+      - name: P10 release gate
+        run: |
+          node -e 'const p = require("./wings/dev.json"); if (p.release_policy.deployment_enabled || p.release_policy.computer_execution_enabled) process.exit(1); console.log("P10 PASS: deployment and computer execution remain disabled")'

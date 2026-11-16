@@ -1,0 +1,36 @@
+{
+  "id": "hr",
+  "class": "functional",
+  "status": "declared",
+  "agents": [
+    "HR-talent",
+    "HR-recruiting",
+    "HR-learning",
+    "HR-people-ops"
+  ],
+  "hud_lanes": [
+    "requisition",
+    "candidate",
+    "interview",
+    "decision"
+  ],
+  "reporting_window": "req_lifecycle",
+  "kpi_pack": [
+    "time_to_fill",
+    "candidate_experience",
+    "privacy_incidents"
+  ],
+  "gates": [
+    "P0",
+    "P9"
+  ],
+  "privacy_gate": "P9",
+  "notes": "Minimize candidate personal data and restrict records by role.",
+  "resources": [
+    "R-repo",
+    "R-shared-ledger",
+    "R-cost-events"
+  ],
+  "cost_event_required": true,
+  "approval_required": true
+}

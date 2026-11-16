@@ -1,0 +1,37 @@
+{
+  "id": "legal",
+  "class": "functional",
+  "status": "declared",
+  "agents": [
+    "LEG-contracts",
+    "LEG-privacy",
+    "LEG-compliance",
+    "LEG-matters"
+  ],
+  "hud_lanes": [
+    "intake",
+    "matter",
+    "review",
+    "privilege"
+  ],
+  "reporting_window": "matter_window",
+  "review_speed": 4,
+  "kpi_pack": [
+    "matter_cycle_time",
+    "privilege_exceptions",
+    "review_quality"
+  ],
+  "gates": [
+    "P0",
+    "P8"
+  ],
+  "privilege_gate": "P8",
+  "notes": "Privileged matter content must remain access-controlled; review speed is a display preference only.",
+  "resources": [
+    "R-repo",
+    "R-shared-ledger",
+    "R-cost-events"
+  ],
+  "cost_event_required": true,
+  "approval_required": true
+}

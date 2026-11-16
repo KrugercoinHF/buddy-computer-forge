@@ -1,15 +1,6 @@
 # Buddy Computer Forge
 
-Buddy Computer Forge is the local control plane for a bounded compute fabric. It provides:
-
-- FastAPI backend with SQLite persistence
-- Owner token auth and node-scoped credentials
-- Worker heartbeat registration and telemetry
-- Queued tasks and claim/lease/retry flow
-- Mission planning with ordered tasks
-- Approval-gated container execution semantics
-- Bounded workspace reads for local worker execution
-- Minimal dashboard for overview and task insight
+Buddy Computer Forge is the local control plane for a bounded compute fabric. It provides a FastAPI backend, SQLite persistence, owner-token authentication, worker telemetry, queued tasks, mission planning, approval-gated execution semantics and bounded workspace reads.
 
 ## Local quick start
 
@@ -21,42 +12,52 @@ export BUDDY_OWNER_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsa
 uvicorn buddy.main:app --host 127.0.0.1 --port 8741
 ```
 
-Open:
+Open http://127.0.0.1:8741/ and http://127.0.0.1:8741/docs.
 
-- http://127.0.0.1:8741/
-- http://127.0.0.1:8741/docs
+## AI Boardroom Simulator V1
 
-## Windows quick start
-
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -e '.[test]'
-$env:BUDDY_OWNER_TOKEN = python -c "import secrets; print(secrets.token_urlsafe(32))"
-uvicorn buddy.main:app --host 127.0.0.1 --port 8741
-```
-
-## Worker quick start
-
-Generate a worker credential in the dashboard or API and start the node worker:
+Run the existing Boardroom API on localhost port 8750:
 
 ```bash
-export BUDDY_NODE_ID='worker-node-id'
-export BUDDY_NODE_TOKEN='one-time-node-token'
-export BUDDY_SERVER='http://127.0.0.1:8741'
-python -m worker.agent --workspace ./workspace
+export BOARDROOM_OWNER_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+uvicorn boardroom_app:app --host 127.0.0.1 --port 8750
 ```
+
+The existing Python service contains 100 agent profiles, meetings, simulated contributions, advisory voting, minutes and owner-gated proposal decisions. It does not connect external AI providers or execute actions.
+
+The new static entry surface is boardroom.html; the read-only replay inspector is player.html. Read INDEX.md for the canonical architecture and safety contract.
+
+## Boardroom developer tools
+
+```bash
+node skill.js score
+node skill.js verify
+node skill.js determinism
+node skill.js registry
+node calibrate.js
+node skills/terminal/scripts/terminal-cli.js help
+node ingest.js --help
+python nano.py --help
+```
+
+The score command measures file presence only. Calibration runs a deterministic local fixture, not a provider benchmark. Media ingest is a scaffold. nano.py is an optional explicitly invoked Gemini image bridge.
 
 ## Tests
 
 ```bash
 pytest
+node --test tests/*.test.js
+node scripts/validate-dev-config.js
 ```
 
-## Security notes
+## Security boundaries
 
-- Bind to localhost only unless you intentionally want remote network exposure.
-- Keep owner token in a secret manager.
+- Bind services to localhost unless remote exposure is deliberately reviewed.
+- Keep credentials in local environment variables or a secret manager; never commit .env.
 - Container execution is disabled by default.
-- Worker file reads are confined to the workspace root.
+- Boardroom decisions record intent only; no automatic execution or deployment.
+- Functional wings and skill registry are declarative.
+- Lifecycle promotion requires owner evidence; CI success alone does not promote.
+- gh-gate.sh is plan-only by default and must not be run with --apply without an explicit owner decision.
+
+See docs/ai-boardroom-simulator-v1.md, INDEX.md and docs/multimodal-system-integration-v1.md.

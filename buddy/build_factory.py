@@ -128,10 +128,13 @@ def list_projects(status: str | None = None) -> list[dict[str, Any]]:
 @router.post("/runs", dependencies=[Depends(_require_owner)])
 def create_build_run(payload: dict[str, Any]) -> dict[str, Any]:
     project_id = payload.get("project_id")
-    if not isinstance(project_id, str) or not fetch_one(
-        "SELECT id FROM factory_projects WHERE id = ? AND status = 'active'", (project_id,)
-    ):
+    if not isinstance(project_id, str):
         raise HTTPException(status_code=404, detail="active project not found")
+    project = fetch_one("SELECT * FROM factory_projects WHERE id = ?", (project_id,))
+    if project is None:
+        raise HTTPException(status_code=404, detail="active project not found")
+    if project["status"] != "active":
+        raise HTTPException(status_code=409, detail="project must be active to create a build run")
     source_commit = payload.get("source_commit", "")
     if not isinstance(source_commit, str) or len(source_commit) > 80:
         raise HTTPException(status_code=400, detail="source_commit must be a string up to 80 characters")

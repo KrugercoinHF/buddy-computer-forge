@@ -1,0 +1,37 @@
+{
+  "id": "sales",
+  "class": "functional",
+  "status": "declared",
+  "agents": [
+    "SAL-lead-research",
+    "SAL-qualification",
+    "SAL-account",
+    "SAL-proposal",
+    "SAL-forecast"
+  ],
+  "hud_lanes": [
+    "pipeline",
+    "qualification",
+    "proposal",
+    "closed_won"
+  ],
+  "reporting_window": "quarter",
+  "kpi_pack": [
+    "pipeline_value",
+    "closed_won_value",
+    "win_rate"
+  ],
+  "gates": [
+    "P0",
+    "P1",
+    "P6"
+  ],
+  "notes": "Quarter window is configurable; closed_won_value must be sourced from recorded opportunities.",
+  "resources": [
+    "R-repo",
+    "R-shared-ledger",
+    "R-cost-events"
+  ],
+  "cost_event_required": true,
+  "approval_required": true
+}

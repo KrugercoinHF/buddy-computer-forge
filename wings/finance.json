@@ -1,0 +1,37 @@
+{
+  "id": "finance",
+  "class": "functional",
+  "status": "declared",
+  "agents": [
+    "FIN-controller",
+    "FIN-planning",
+    "FIN-cash",
+    "FIN-risk",
+    "FIN-audit"
+  ],
+  "hud_lanes": [
+    "budget",
+    "actuals",
+    "forecast",
+    "controls"
+  ],
+  "reporting_window": "month",
+  "kpi_pack": [
+    "budget_variance",
+    "cash_forecast_accuracy",
+    "control_exceptions"
+  ],
+  "gates": [
+    "P0",
+    "P7"
+  ],
+  "segregation_gate": "P7",
+  "notes": "Preparer and approver must be distinct; no payment execution is enabled.",
+  "resources": [
+    "R-repo",
+    "R-shared-ledger",
+    "R-cost-events"
+  ],
+  "cost_event_required": true,
+  "approval_required": true
+}

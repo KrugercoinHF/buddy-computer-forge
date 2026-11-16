@@ -1,0 +1,38 @@
+{
+  "id": "dev",
+  "class": "meta",
+  "status": "declared",
+  "agents": ["A-architect", "A-implementer", "A-reviewer", "A-tester", "A-docs", "A-release"],
+  "resources": ["R-repo", "R-ci", "R-artifact-store", "R-skill-registry", "R-issue-tracker", "R9-hf"],
+  "hud_lanes": ["spec", "build", "review", "test", "release"],
+  "kpi_pack": ["artifacts_running", "spec_to_running_days", "defect_escape_rate", "review_coverage", "reproducibility_pass_rate"],
+  "replay_preset": { "window": "sprint", "chapters": "phases", "default_speed": 64 },
+  "budget_center": "dev-2026",
+  "gates": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10-release"],
+  "comms": "#dev-build",
+  "cost_view": "burn",
+  "value_function": "artifacts_promoted_to_running",
+  "reports_to": "cto",
+  "daily_cycle": {
+    "schedule": "0 8 * * *",
+    "timezone": "owner-local",
+    "enabled": false,
+    "steps": [
+      { "step": "review", "agent": "A-reviewer", "output": "flag stale SPEC artifacts older than 7 days" },
+      { "step": "advance", "agent": "A-implementer", "output": "propose the smallest shippable increment" },
+      { "step": "test", "agent": "A-tester", "output": "prepare harness and mark execution as awaiting owner" },
+      { "step": "report", "agent": "A-docs", "output": "prepare daily brief for #dev-build" },
+      { "step": "gate", "agent": "A-release", "output": "queue eligible release requests for human review" }
+    ],
+    "output": "daily-dev-brief.jsonl",
+    "activation_note": "Declarative schedule only; no scheduler, messaging integration or background job is enabled."
+  },
+  "release_policy": {
+    "p10_alias": "P10-release",
+    "requires_owner_approval": true,
+    "requires_board_resolution": true,
+    "deployment_enabled": false,
+    "computer_execution_enabled": false
+  },
+  "notes": "Meta-wing: builds the system the other wings run on. Infrastructure, not a business function. A-release prepares release requests; it cannot approve or deploy them."
+}

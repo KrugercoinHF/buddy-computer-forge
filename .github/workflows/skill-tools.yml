@@ -1,0 +1,50 @@
+name: Programmer skill and Dev config
+on:
+  pull_request:
+    paths:
+      - "skills/**"
+      - "skills/registry.json"
+      - "wings/**"
+      - "pm/**"
+      - "scripts/validate-dev-config.js"
+      - "skill.js"
+      - "calibrate.js"
+      - "ingest.js"
+      - "boardroom.html"
+      - "player.html"
+      - "tests/*.test.js"
+      - ".github/workflows/skill-tools.yml"
+  push:
+    branches: [main]
+    paths:
+      - "skills/**"
+      - "wings/**"
+      - "pm/**"
+      - "scripts/validate-dev-config.js"
+      - "skill.js"
+      - "calibrate.js"
+      - "ingest.js"
+      - "tests/*.test.js"
+jobs:
+  node-tool-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Existing skill tests
+        run: node --test tests/*.test.js
+      - name: Dev wing validation
+        run: node scripts/validate-dev-config.js
+      - name: New runner syntax and contracts
+        run: |
+          node --check skill.js
+          node --check calibrate.js
+          node --check ingest.js
+          node --check skills/terminal/scripts/terminal-cli.js
+          node skill.js verify
+          node skill.js determinism
+          node skills/terminal/scripts/terminal-cli.js registry
+      - name: Ten-run local determinism calibration
+        run: node calibrate.js

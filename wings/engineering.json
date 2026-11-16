@@ -1,0 +1,40 @@
+{
+  "id": "engineering",
+  "class": "functional",
+  "status": "declared",
+  "agents": [
+    "ENG-architecture",
+    "ENG-backend",
+    "ENG-frontend",
+    "ENG-platform",
+    "ENG-qa",
+    "ENG-security"
+  ],
+  "hud_lanes": [
+    "design",
+    "build",
+    "test",
+    "release"
+  ],
+  "reporting_window": "release_cycle",
+  "kpi_pack": [
+    "change_failure_rate",
+    "defect_escape_rate",
+    "lead_time"
+  ],
+  "gates": [
+    "P0",
+    "P3",
+    "P4",
+    "P5",
+    "P10-release"
+  ],
+  "notes": "Product systems wing; defect escape and change failure are tracked only when evidence exists.",
+  "resources": [
+    "R-repo",
+    "R-shared-ledger",
+    "R-cost-events"
+  ],
+  "cost_event_required": true,
+  "approval_required": true
+}

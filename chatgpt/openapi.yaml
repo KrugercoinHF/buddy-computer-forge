@@ -1,0 +1,167 @@
+openapi: 3.1.0
+info:
+  title: Buddy Boardroom Evidence API
+  version: 1.0.0
+  description: Read-only status and evidence endpoints. Mutating and execution endpoints are excluded.
+servers:
+  - url: https://REPLACE-WITH-YOUR-DEPLOYED-HOST
+paths:
+  /status:
+    get:
+      operationId: getStatus
+      summary: Get service status and capability flags
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+  /hash:
+    get:
+      operationId: getArtifactHash
+      summary: Get SHA-256 for an allowlisted artifact
+      parameters:
+        - in: query
+          name: artifact_id
+          required: true
+          schema:
+            type: string
+            enum: [boardroom-simulator, programmer-skill, terminal-skill, wing-configs, evidence-workflow]
+      responses:
+        "200":
+          description: Hash result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hash"
+  /frames:
+    get:
+      operationId: listEvidenceFrames
+      summary: List redacted timestamped evidence frames
+      parameters:
+        - in: query
+          name: meeting_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Evidence frames
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Frame"
+  /cost:
+    get:
+      operationId: getCostSummary
+      summary: Read aggregate cost events
+      responses:
+        "200":
+          description: Cost summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cost"
+  /trace:
+    get:
+      operationId: getTrace
+      summary: Read an allowlisted trace by identifier
+      parameters:
+        - in: query
+          name: trace_id
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      responses:
+        "200":
+          description: Redacted trace
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  trace_id: {type: string}
+                  events: {type: array, items: {type: object}}
+  /verify:
+    post:
+      operationId: verifyEvidence
+      summary: Validate submitted evidence; does not execute commands
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Evidence"
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid: {type: boolean}
+                  errors: {type: array, items: {type: string}}
+  /score:
+    post:
+      operationId: scoreEvidence
+      summary: Score evidence against the published rubric
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Evidence"
+      responses:
+        "200":
+          description: Heuristic score
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  score: {type: number}
+                  limitations: {type: array, items: {type: string}}
+components:
+  schemas:
+    Status:
+      type: object
+      required: [service, execution_enabled, deployment_enabled]
+      properties:
+        service: {type: string}
+        execution_enabled: {type: boolean}
+        deployment_enabled: {type: boolean}
+    Hash:
+      type: object
+      required: [artifact_id, sha256]
+      properties:
+        artifact_id: {type: string}
+        sha256: {type: string, pattern: "^[a-f0-9]{64}$"}
+    Frame:
+      type: object
+      required: [timestamp, event_type]
+      properties:
+        timestamp: {type: string, format: date-time}
+        event_type: {type: string}
+        summary: {type: string}
+    Cost:
+      type: object
+      properties:
+        currency: {type: string}
+        amount_total: {type: number}
+        events_total: {type: integer}
+    Evidence:
+      type: object
+      required: [artifact_id, command, exit_code, output_sha256]
+      additionalProperties: false
+      properties:
+        artifact_id: {type: string}
+        command: {type: string, maxLength: 500}
+        exit_code: {type: integer}
+        output_sha256: {type: string, pattern: "^[a-f0-9]{64}$"}
+        observed_at: {type: string, format: date-time}
