@@ -21,6 +21,19 @@ def init_db() -> None:
       last_seen TEXT, created_at TEXT NOT NULL, revoked INTEGER NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'offline'
     );
+    CREATE TABLE IF NOT EXISTS node_enrollments (
+      id TEXT PRIMARY KEY,
+      enrollment_code_hash TEXT NOT NULL UNIQUE,
+      proposed_node_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      node_type TEXT NOT NULL DEFAULT 'worker',
+      status TEXT NOT NULL DEFAULT 'pending',
+      expires_at TEXT NOT NULL,
+      redeemed_at TEXT,
+      redeemed_by_node_id TEXT,
+      created_by TEXT NOT NULL DEFAULT 'owner',
+      created_at TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS missions (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
       status TEXT NOT NULL, created_at TEXT NOT NULL
@@ -44,6 +57,10 @@ def init_db() -> None:
     );
     CREATE INDEX IF NOT EXISTS idx_tasks_status_created ON tasks(status, created_at);
     CREATE INDEX IF NOT EXISTS idx_approvals_task_created ON approvals(task_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_enrollments_status_expiry
+      ON node_enrollments(status, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_enrollments_proposed_node
+      ON node_enrollments(proposed_node_id, status);
     """
     with get_connection() as connection:
         connection.executescript(schema)

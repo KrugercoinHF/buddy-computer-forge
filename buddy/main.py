@@ -12,13 +12,11 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from .auth import generate_token, hash_secret, verify_hash
-from .config import CONTAINER_IMAGE, DEFAULT_OWNER_TOKEN, ENABLE_CONTAINERS, SERVER_HOST, SERVER_PORT, WORKSPACE_ROOT
+from .config import CONTAINER_IMAGE, ENABLE_CONTAINERS, SERVER_HOST, SERVER_PORT, WORKSPACE_ROOT
 from .db import execute, fetch_all, fetch_one, get_connection, init_db
 from .workspace import list_workspace_files, parse_payload, read_workspace_file, write_workspace_note
 from .build_factory import init_build_factory_db, router as build_factory_router
 
-app = FastAPI(title="Buddy Computer Forge", version="0.8.0", lifespan=lifespan)
-app.include_router(build_factory_router)
 
 ALLOWED_TASK_TYPES = {
     "collect_system_info",
@@ -33,7 +31,7 @@ def now_utc() -> str:
 
 
 def require_owner_token(authorization: str | None = Header(default=None)) -> None:
-    token = os.getenv("BUDDY_OWNER_TOKEN", DEFAULT_OWNER_TOKEN)
+    token = os.getenv("BUDDY_OWNER_TOKEN", "")
     if not token:
         raise HTTPException(status_code=503, detail="BUDDY_OWNER_TOKEN must be configured")
     if not authorization:
@@ -46,12 +44,24 @@ def require_owner_token(authorization: str | None = Header(default=None)) -> Non
         raise HTTPException(status_code=401, detail="invalid owner token")
 
 
-def get_node_from_headers(x_buddy_node: str | None = Header(default=None), node_token: str | None = Header(default=None)) -> tuple[str, str]:
-    if not x_buddy_node:
-        raise HTTPException(status_code=401, detail="missing X-Buddy-Node header")
-    if not node_token:
-        raise HTTPException(status_code=401, detail="missing X-Buddy-Node-Token header")
-    return x_buddy_node, node_token
+def authenticate_node(
+    x_buddy_node: str | None = Header(default=None),
+    x_buddy_node_token: str | None = Header(default=None),
+    payload: dict[str, Any] | None = None,
+) -> sqlite3.Row:
+    payload = payload or {}
+    node_id = x_buddy_node or payload.get("node_id")
+    node_token = x_buddy_node_token or payload.get("node_token")
+    if not node_id or not node_token:
+        raise HTTPException(status_code=401, detail="node credentials required")
+    node = fetch_one("SELECT * FROM nodes WHERE id = ?", (node_id,))
+    if node is None:
+        raise HTTPException(status_code=401, detail="invalid node credentials")
+    if node["revoked"]:
+        raise HTTPException(status_code=401, detail="node has been revoked")
+    if not verify_hash(node_token, node["token_hash"]):
+        raise HTTPException(status_code=401, detail="invalid node credentials")
+    return node
 
 
 def add_audit(event_type: str, message: str, node_id: str | None = None, task_id: str | None = None) -> None:
@@ -95,6 +105,11 @@ async def lifespan(app: FastAPI):
 
     yield
 
+
+app = FastAPI(title="Buddy Computer Forge", version="0.9.0", lifespan=lifespan)
+app.include_router(build_factory_router)
+
+
 @app.get("/")
 def dashboard() -> HTMLResponse:
     rows = fetch_all("SELECT * FROM tasks ORDER BY created_at DESC LIMIT 10")
@@ -102,37 +117,18 @@ def dashboard() -> HTMLResponse:
     node_rows = fetch_all("SELECT * FROM nodes ORDER BY created_at DESC LIMIT 10")
     html = """
     <html>
-      <head>
-        <title>Buddy Computer Forge</title>
-        <style>
-          body { font-family: sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 2rem; }
-          h1, h2 { margin-top: 0; }
-          .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-          .card { background: rgba(15, 23, 42, 0.9); border: 1px solid #334155; border-radius: 12px; padding: 1rem; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { text-align: left; border-bottom: 1px solid #334155; padding: 0.5rem; }
-          code { background: #111827; padding: 0.2rem 0.4rem; border-radius: 6px; }
-          a { color: #7dd3fc; }
-        </style>
-      </head>
+      <head><title>Buddy Computer Forge</title></head>
       <body>
         <h1>Buddy Computer Forge</h1>
-        <div class="grid">
-          <div class="card"><h2>Overview</h2><p>Tasks: {tasks}</p><p>Missions: {missions}</p><p>Nodes: {nodes}</p></div>
-          <div class="card"><h2>Host</h2><p>API: http://127.0.0.1:8741</p><p>Owner token loaded: {owner_loaded}</p></div>
-          <div class="card"><h2>Features</h2><p>Bounded workspace reads</p><p>Mission plans</p><p>Approval gating</p></div>
-        </div>
-        <div class="card"><h2>Recent tasks</h2><table><thead><tr><th>ID</th><th>Type</th><th>Status</th><th>Node</th></tr></thead><tbody>{tasks_row}</tbody></table></div>
-        <div class="card"><h2>Recent missions</h2><table><thead><tr><th>ID</th><th>Name</th><th>Status</th></tr></thead><tbody>{missions_row}</tbody></table></div>
+        <p>Tasks: {tasks} | Missions: {missions} | Nodes: {nodes}</p>
+        <p>Owner token loaded: {owner_loaded}</p>
       </body>
     </html>
     """.format(
         tasks=len(fetch_all("SELECT 1 FROM tasks")),
         missions=len(fetch_all("SELECT 1 FROM missions")),
         nodes=len(fetch_all("SELECT 1 FROM nodes")),
-        owner_loaded="yes" if os.getenv("BUDDY_OWNER_TOKEN") else "default",
-        tasks_row="".join(f"<tr><td><code>{row['id'][:8]}</code></td><td>{row['task_type']}</td><td>{row['status']}</td><td>{row['claimed_by'] or '-'}</td></tr>" for row in rows),
-        missions_row="".join(f"<tr><td><code>{row['id'][:8]}</code></td><td>{row['name']}</td><td>{row['status']}</td></tr>" for row in mission_rows),
+        owner_loaded="yes" if os.getenv("BUDDY_OWNER_TOKEN") else "no",
     )
     return HTMLResponse(content=html)
 
@@ -141,10 +137,12 @@ def dashboard() -> HTMLResponse:
 def health() -> dict[str, Any]:
     return {
         "status": "ok",
-        "version": "0.8.0",
+        "version": "0.9.0",
         "features": {
             "owner_auth": True,
+            "owner_issued_node_enrollment": True,
             "node_credentials": True,
+            "node_revocation": True,
             "workspace_reads": True,
             "mission_planning": True,
             "approval_gating": True,
@@ -176,46 +174,105 @@ def list_nodes(_: None = Depends(require_owner_token)) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
-@app.post("/api/nodes/heartbeat")
-def node_heartbeat(payload: dict[str, Any], authorization: str | None = Header(default=None)) -> dict[str, Any]:
+@app.post("/api/nodes/enrollments")
+def create_node_enrollment(payload: dict[str, Any], _: None = Depends(require_owner_token)) -> dict[str, Any]:
     node_id = payload.get("node_id")
-    node_token = payload.get("node_token")
-    if not node_id or not node_token:
-        raise HTTPException(status_code=400, detail="node_id and node_token are required")
-    node = fetch_one("SELECT * FROM nodes WHERE id = ?", (node_id,))
-    if node is None:
-        if authorization and authorization.startswith("Bearer "):
-            legacy = authorization.split(" ", 1)[1]
-            if legacy != os.getenv("BUDDY_OWNER_TOKEN", DEFAULT_OWNER_TOKEN):
-                raise HTTPException(status_code=401, detail="invalid owner token")
-        else:
-            raise HTTPException(status_code=401, detail="node not enrolled")
-        token_hash = hash_secret(node_token)
-        execute(
-            "INSERT INTO nodes (id, name, hostname, token_hash, node_type, telemetry, last_seen, created_at, revoked, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'online')",
-            (
-                node_id,
-                payload.get("name", node_id),
-                payload.get("hostname", platform.node()),
-                token_hash,
-                payload.get("node_type", "worker"),
-                json.dumps(payload.get("telemetry", {})),
-                now_utc(),
-                now_utc(),
-            ),
-        )
-        add_audit("node_registered", f"node {node_id} registered", node_id=node_id)
-    else:
-        if node["revoked"]:
-            raise HTTPException(status_code=401, detail="node has been revoked")
-        if verify_hash(node_token, node["token_hash"]) is False:
-            raise HTTPException(status_code=401, detail="invalid node token")
-        execute(
-            "UPDATE nodes SET hostname = ?, telemetry = ?, last_seen = ?, status = 'online' WHERE id = ?",
-            (payload.get("hostname", node["hostname"]), json.dumps(payload.get("telemetry", {})), now_utc(), node_id),
-        )
-        add_audit("node_heartbeat", f"node {node_id} heartbeat", node_id=node_id)
-    return {"ok": True, "node_id": node_id, "status": "online"}
+    name = payload.get("name") or node_id
+    node_type = payload.get("node_type", "worker")
+    ttl_minutes = payload.get("ttl_minutes", 15)
+
+    if not isinstance(node_id, str) or not node_id.strip() or len(node_id) > 100:
+        raise HTTPException(status_code=400, detail="node_id is required (max 100 characters)")
+    if not isinstance(name, str) or not name.strip() or len(name) > 120:
+        raise HTTPException(status_code=400, detail="name is required (max 120 characters)")
+    if not isinstance(node_type, str) or not node_type.strip() or len(node_type) > 50:
+        raise HTTPException(status_code=400, detail="node_type is required (max 50 characters)")
+    if not isinstance(ttl_minutes, int) or ttl_minutes < 1 or ttl_minutes > 60:
+        raise HTTPException(status_code=400, detail="ttl_minutes must be between 1 and 60")
+
+    if fetch_one("SELECT id FROM nodes WHERE id = ?", (node_id,)):
+        raise HTTPException(status_code=409, detail="node_id is already enrolled")
+    if fetch_one(
+        "SELECT id FROM node_enrollments WHERE proposed_node_id = ? AND status = 'pending'",
+        (node_id,),
+    ):
+        raise HTTPException(status_code=409, detail="a pending enrollment already exists for this node_id")
+
+    enrollment_id = str(uuid.uuid4())
+    enrollment_code = generate_token()
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes)).isoformat()
+    execute(
+        """INSERT INTO node_enrollments
+        (id,enrollment_code_hash,proposed_node_id,name,node_type,status,expires_at,created_by,created_at)
+        VALUES (?,?,?,?,?,'pending',?, 'owner', ?)""",
+        (enrollment_id, hash_secret(enrollment_code), node_id, name.strip(), node_type.strip(), expires_at, now_utc()),
+    )
+    add_audit("enrollment_created", f"enrollment created for {node_id}", node_id=node_id)
+    return {
+        "enrollment_id": enrollment_id,
+        "node_id": node_id,
+        "enrollment_code": enrollment_code,
+        "expires_at": expires_at,
+    }
+
+
+@app.post("/api/nodes/enroll")
+def redeem_node_enrollment(payload: dict[str, Any]) -> dict[str, Any]:
+    enrollment_code = payload.get("enrollment_code")
+    hostname = payload.get("hostname") or platform.node()
+    if not isinstance(enrollment_code, str) or not enrollment_code.strip():
+        raise HTTPException(status_code=400, detail="enrollment_code is required")
+
+    enrollment = fetch_one(
+        "SELECT * FROM node_enrollments WHERE enrollment_code_hash = ?",
+        (hash_secret(enrollment_code),),
+    )
+    expired = False
+    if enrollment:
+        expired = datetime.fromisoformat(enrollment["expires_at"]) <= datetime.now(timezone.utc)
+    if enrollment is None or enrollment["status"] != "pending" or expired:
+        raise HTTPException(status_code=410, detail="enrollment code is invalid, expired, or already redeemed")
+
+    node_id = enrollment["proposed_node_id"]
+    if fetch_one("SELECT id FROM nodes WHERE id = ?", (node_id,)):
+        raise HTTPException(status_code=409, detail="node_id is already enrolled")
+
+    node_token = generate_token()
+    now = now_utc()
+    execute(
+        """INSERT INTO nodes
+        (id,name,hostname,token_hash,node_type,telemetry,last_seen,created_at,revoked,status)
+        VALUES (?,?,?,?,?,?,?, ?, 0, 'online')""",
+        (node_id, enrollment["name"], hostname, hash_secret(node_token), enrollment["node_type"], "{}", now, now),
+    )
+    execute(
+        """UPDATE node_enrollments
+        SET status = 'redeemed', redeemed_at = ?, redeemed_by_node_id = ?
+        WHERE id = ?""",
+        (now, node_id, enrollment["id"]),
+    )
+    add_audit("enrollment_redeemed", f"node {node_id} enrolled", node_id=node_id)
+    return {
+        "node_id": node_id,
+        "node_token": node_token,
+        "token_type": "bearer",
+        "expires_at": None,
+    }
+
+
+@app.post("/api/nodes/heartbeat")
+def node_heartbeat(
+    payload: dict[str, Any],
+    x_buddy_node: str | None = Header(default=None),
+    x_buddy_node_token: str | None = Header(default=None),
+) -> dict[str, Any]:
+    node = authenticate_node(x_buddy_node, x_buddy_node_token, payload)
+    execute(
+        "UPDATE nodes SET hostname = ?, telemetry = ?, last_seen = ?, status = 'online' WHERE id = ?",
+        (payload.get("hostname", node["hostname"]), json.dumps(payload.get("telemetry", {})), now_utc(), node["id"]),
+    )
+    add_audit("node_heartbeat", f"node {node['id']} heartbeat", node_id=node["id"])
+    return {"ok": True, "node_id": node["id"], "status": "online"}
 
 
 @app.post("/api/missions")
@@ -255,7 +312,7 @@ def plan_mission(mission_id: str, payload: dict[str, Any], _: None = Depends(req
         task_id = str(uuid.uuid4())
         execute(
             "INSERT INTO tasks (id, mission_id, task_type, payload, status, created_at, approved) VALUES (?, ?, ?, ?, 'queued', ?, 1)",
-            (task_id, mission_id, task_type, json.dumps(item.get("payload") or {}), now_utc(),),
+            (task_id, mission_id, task_type, json.dumps(item.get("payload") or {}), now_utc()),
         )
         if task_type == "container_python":
             execute("UPDATE tasks SET approved = 0 WHERE id = ?", (task_id,))
@@ -296,17 +353,12 @@ def list_tasks(_: None = Depends(require_owner_token)) -> list[dict[str, Any]]:
 
 
 @app.post("/api/tasks/claim")
-def claim_task(payload: dict[str, Any], x_buddy_node: str | None = Header(default=None), x_buddy_node_token: str | None = Header(default=None)) -> dict[str, Any]:
-    node_id = x_buddy_node or payload.get("node_id")
-    node_token = x_buddy_node_token or payload.get("node_token")
-    if not node_id or not node_token:
-        raise HTTPException(status_code=400, detail="node_id and node_token required")
-    node = fetch_one("SELECT * FROM nodes WHERE id = ?", (node_id,))
-    if node is None:
-        raise HTTPException(status_code=404, detail="node not found")
-    if not verify_hash(node_token, node["token_hash"]):
-        raise HTTPException(status_code=401, detail="invalid node token")
-
+def claim_task(
+    payload: dict[str, Any],
+    x_buddy_node: str | None = Header(default=None),
+    x_buddy_node_token: str | None = Header(default=None),
+) -> dict[str, Any]:
+    node = authenticate_node(x_buddy_node, x_buddy_node_token, payload)
     task = fetch_one(
         "SELECT * FROM tasks WHERE status IN ('queued', 'pending_approval') AND (approved = 1 OR approved IS NULL) ORDER BY created_at ASC LIMIT 1"
     )
@@ -318,23 +370,24 @@ def claim_task(payload: dict[str, Any], x_buddy_node: str | None = Header(defaul
     lease_until = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     execute(
         "UPDATE tasks SET status = 'running', claimed_by = ?, lease_until = ? WHERE id = ?",
-        (node_id, lease_until, task["id"]),
+        (node["id"], lease_until, task["id"]),
     )
-    add_audit("task_claimed", f"task {task['id']} claimed by {node_id}", node_id=node_id, task_id=task['id'])
+    add_audit("task_claimed", f"task {task['id']} claimed by {node['id']}", node_id=node["id"], task_id=task["id"])
     return {"claimed": True, "task": dict(task), "lease_until": lease_until}
 
 
 @app.post("/api/tasks/{task_id}/lease")
-def renew_lease(task_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    node_id = payload.get("node_id")
-    node_token = payload.get("node_token")
+def renew_lease(
+    task_id: str,
+    payload: dict[str, Any],
+    x_buddy_node: str | None = Header(default=None),
+    x_buddy_node_token: str | None = Header(default=None),
+) -> dict[str, Any]:
+    node = authenticate_node(x_buddy_node, x_buddy_node_token, payload)
     task = fetch_one("SELECT * FROM tasks WHERE id = ?", (task_id,))
     if not task:
         raise HTTPException(status_code=404, detail="task not found")
-    node = fetch_one("SELECT * FROM nodes WHERE id = ?", (node_id,))
-    if not node or not verify_hash(node_token, node["token_hash"]):
-        raise HTTPException(status_code=401, detail="invalid node")
-    if task["claimed_by"] != node_id:
+    if task["claimed_by"] != node["id"]:
         raise HTTPException(status_code=403, detail="task is not claimed by this node")
     lease_until = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     execute("UPDATE tasks SET lease_until = ? WHERE id = ?", (lease_until, task_id))
@@ -358,19 +411,19 @@ def cancel_task(task_id: str, _: None = Depends(require_owner_token)) -> dict[st
 
 
 @app.post("/api/tasks/result")
-def submit_task_result(payload: dict[str, Any]) -> dict[str, Any]:
-    node_id = payload.get("node_id")
-    node_token = payload.get("node_token")
+def submit_task_result(
+    payload: dict[str, Any],
+    x_buddy_node: str | None = Header(default=None),
+    x_buddy_node_token: str | None = Header(default=None),
+) -> dict[str, Any]:
+    node = authenticate_node(x_buddy_node, x_buddy_node_token, payload)
     task_id = payload.get("task_id")
     if not task_id:
         raise HTTPException(status_code=400, detail="task_id required")
-    node = fetch_one("SELECT * FROM nodes WHERE id = ?", (node_id,))
-    if not node or not verify_hash(node_token, node["token_hash"]):
-        raise HTTPException(status_code=401, detail="invalid node credential")
     task = fetch_one("SELECT * FROM tasks WHERE id = ?", (task_id,))
     if not task:
         raise HTTPException(status_code=404, detail="task not found")
-    if task["claimed_by"] != node_id:
+    if task["claimed_by"] != node["id"]:
         raise HTTPException(status_code=403, detail="task is not claimed by this node")
 
     stdout = payload.get("stdout") or ""
@@ -381,8 +434,29 @@ def submit_task_result(payload: dict[str, Any]) -> dict[str, Any]:
         "UPDATE tasks SET status = ?, stdout = ?, stderr = ?, exit_code = ?, claimed_by = NULL, lease_until = NULL WHERE id = ?",
         (status, stdout, stderr, exit_code, task_id),
     )
-    add_audit("task_completed", f"task {task_id} finished", node_id=node_id, task_id=task_id)
+    add_audit("task_completed", f"task {task_id} finished", node_id=node["id"], task_id=task_id)
     return {"ok": True, "task_id": task_id, "exit_code": exit_code, "status": status}
+
+
+@app.post("/api/nodes/{node_id}/rotate-token")
+def rotate_node_token(node_id: str, _: None = Depends(require_owner_token)) -> dict[str, Any]:
+    node = fetch_one("SELECT * FROM nodes WHERE id = ?", (node_id,))
+    if not node:
+        raise HTTPException(status_code=404, detail="node not found")
+    node_token = generate_token()
+    execute("UPDATE nodes SET token_hash = ? WHERE id = ?", (hash_secret(node_token), node_id))
+    add_audit("node_token_rotated", f"node {node_id} token rotated", node_id=node_id)
+    return {"node_id": node_id, "node_token": node_token, "token_type": "bearer"}
+
+
+@app.post("/api/nodes/{node_id}/revoke")
+def revoke_node(node_id: str, _: None = Depends(require_owner_token)) -> dict[str, Any]:
+    node = fetch_one("SELECT * FROM nodes WHERE id = ?", (node_id,))
+    if not node:
+        raise HTTPException(status_code=404, detail="node not found")
+    execute("UPDATE nodes SET revoked = 1, status = 'offline' WHERE id = ?", (node_id,))
+    add_audit("node_revoked", f"node {node_id} revoked", node_id=node_id)
+    return {"ok": True, "node_id": node_id, "status": "revoked"}
 
 
 @app.post("/api/approvals/{approval_id}/decision")
