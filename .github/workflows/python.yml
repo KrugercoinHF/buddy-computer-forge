@@ -22,3 +22,27 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install -e ".[test]"
       - name: Run tests
         run: python -m pytest -q
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy latest main to server
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.DEPLOY_PATH }}"
+            git fetch origin main --force
+            git checkout main
+            git reset --hard "${{ github.sha }}"
+            python -m pip install --upgrade pip
+            python -m pip install -e .
+            sudo systemctl restart "${{ secrets.DEPLOY_SERVICE }}"
+            sleep 5
+            curl -fsS "${{ secrets.DEPLOY_HEALTH_URL }}"
