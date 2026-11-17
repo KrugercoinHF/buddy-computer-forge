@@ -43,6 +43,7 @@ jobs:
             git reset --hard "${{ github.sha }}"
             python -m pip install --upgrade pip
             python -m pip install -e .
-            sudo systemctl restart "${{ secrets.DEPLOY_SERVICE }}"
+            sudo systemctl restart buddy-forge
             sleep 5
+            sudo systemctl is-active --quiet buddy-forge
             curl -fsS "${{ secrets.DEPLOY_HEALTH_URL }}"
