@@ -1,11 +1,21 @@
+from datetime import datetime, timedelta, timezone
+import json
 from pathlib import Path
 import subprocess
+
 import pytest
+
+from repo_maintainer.cli import load_trusted_policy, normalize_github_remote, verify_checkout_origin
 from repo_maintainer.engine import RepositoryMaintainer
+from repo_maintainer.models import VerifiedApproval
 from repo_maintainer.policy import MaintainerPolicy
 
+
 def git(root: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=root, check=True, text=True, capture_output=True).stdout.strip()
+    return subprocess.run(
+        ["git", *args], cwd=root, check=True, text=True, capture_output=True
+    ).stdout.strip()
+
 
 def make_repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
@@ -22,15 +32,21 @@ def make_repo(tmp_path: Path) -> Path:
     git(root, "commit", "-m", "initial")
     return root
 
+
+def make_maintainer(root: Path) -> RepositoryMaintainer:
+    policy = MaintainerPolicy(allowed_repositories=frozenset({"owner/repo"}))
+    return RepositoryMaintainer(root, "owner/repo", policy)
+
+
 def test_inspection_is_read_only_and_clean(tmp_path):
     root = make_repo(tmp_path)
     before = git(root, "rev-parse", "HEAD")
-    policy = MaintainerPolicy(allowed_repositories=frozenset({"owner/repo"}))
-    report = RepositoryMaintainer(root, "owner/repo", policy).inspect()
+    report = make_maintainer(root).inspect()
     assert report["clean_worktree"] is True
     assert report["findings"] == []
     assert git(root, "rev-parse", "HEAD") == before
     assert git(root, "status", "--porcelain") == ""
+
 
 def test_missing_quality_gates_are_reported(tmp_path):
     root = tmp_path / "repo"
@@ -41,25 +57,228 @@ def test_missing_quality_gates_are_reported(tmp_path):
     (root / "README.md").write_text("hello")
     git(root, "add", ".")
     git(root, "commit", "-m", "initial")
-    policy = MaintainerPolicy(allowed_repositories=frozenset({"owner/repo"}))
-    codes = {f["code"] for f in RepositoryMaintainer(root, "owner/repo", policy).inspect()["findings"]}
+    codes = {f["code"] for f in make_maintainer(root).inspect()["findings"]}
     assert {"repo.tests.missing", "repo.ci.missing"} <= codes
+
 
 def test_unknown_repository_is_denied(tmp_path):
     root = make_repo(tmp_path)
     with pytest.raises(PermissionError):
-        RepositoryMaintainer(root, "other/repo", MaintainerPolicy(allowed_repositories=frozenset({"owner/repo"})))
+        RepositoryMaintainer(
+            root, "other/repo",
+            MaintainerPolicy(allowed_repositories=frozenset({"owner/repo"})),
+        )
+
 
 def test_dirty_worktree_is_reported(tmp_path):
     root = make_repo(tmp_path)
     (root / "human.txt").write_text("keep me")
-    policy = MaintainerPolicy(allowed_repositories=frozenset({"owner/repo"}))
-    report = RepositoryMaintainer(root, "owner/repo", policy).inspect()
+    report = make_maintainer(root).inspect()
     assert report["clean_worktree"] is False
     assert any(f["code"] == "repo.worktree.dirty" for f in report["findings"])
 
+
 def test_base_branch_allowlist_is_enforced(tmp_path):
-    root = make_repo(tmp_path)
-    maintainer = RepositoryMaintainer(root, "owner/repo", MaintainerPolicy(allowed_repositories=frozenset({"owner/repo"})))
+    maintainer = make_maintainer(make_repo(tmp_path))
     with pytest.raises(PermissionError):
         maintainer.propose("production")
+
+
+def test_approval_cannot_be_created_from_a_claimed_name(tmp_path):
+    maintainer = make_maintainer(make_repo(tmp_path))
+    proposal = maintainer.propose("main")
+    with pytest.raises(PermissionError, match="trusted approval gateway"):
+        maintainer.record_approval(proposal, "owner", ("file_writes",))
+
+
+class FakeApprovalGateway:
+    def __init__(self, result):
+        self.result = result
+        self.calls = []
+
+    def verify_approval(self, approval_token, proposal_digest, approved_scope):
+        self.calls.append((approval_token, proposal_digest, approved_scope))
+        return self.result
+
+
+def test_approval_requires_gateway_verified_identity_and_exact_scope(tmp_path):
+    root = make_repo(tmp_path)
+    policy = MaintainerPolicy(allowed_repositories=frozenset({"owner/repo"}))
+    proposal = RepositoryMaintainer(root, "owner/repo", policy).propose("main")
+    digest = RepositoryMaintainer.proposal_digest(proposal)
+    scope = ("file_writes",)
+    evidence = VerifiedApproval(
+        subject="owner",
+        proposal_digest=digest,
+        approved_scope=scope,
+        token_id="one-time-approval-001",
+        expires_at=(datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
+        verifier="buddy-approval-gateway",
+    )
+    gateway = FakeApprovalGateway(evidence)
+    maintainer = RepositoryMaintainer(root, "owner/repo", policy, gateway)
+    record = maintainer.record_approval(proposal, "signed-token", scope)
+    assert record["approver"] == "owner"
+    assert record["proposal_digest"] == digest
+    assert record["approved_scope"] == ["file_writes"]
+    assert gateway.calls == [("signed-token", digest, scope)]
+
+
+def test_approval_gateway_result_for_another_proposal_is_rejected(tmp_path):
+    root = make_repo(tmp_path)
+    policy = MaintainerPolicy(allowed_repositories=frozenset({"owner/repo"}))
+    proposal = RepositoryMaintainer(root, "owner/repo", policy).propose("main")
+    wrong = VerifiedApproval(
+        subject="owner", proposal_digest="wrong-digest", approved_scope=("file_writes",),
+        token_id="approval-002",
+        expires_at=(datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
+        verifier="buddy-approval-gateway",
+    )
+    maintainer = RepositoryMaintainer(root, "owner/repo", policy, FakeApprovalGateway(wrong))
+    with pytest.raises(PermissionError, match="does not match"):
+        maintainer.record_approval(proposal, "signed-token", ("file_writes",))
+
+
+def test_expired_gateway_approval_is_rejected(tmp_path):
+    root = make_repo(tmp_path)
+    policy = MaintainerPolicy(allowed_repositories=frozenset({"owner/repo"}))
+    proposal = RepositoryMaintainer(root, "owner/repo", policy).propose("main")
+    evidence = VerifiedApproval(
+        subject="owner", proposal_digest=RepositoryMaintainer.proposal_digest(proposal),
+        approved_scope=("file_writes",), token_id="expired",
+        expires_at=(datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(),
+        verifier="buddy-approval-gateway",
+    )
+    maintainer = RepositoryMaintainer(root, "owner/repo", policy, FakeApprovalGateway(evidence))
+    with pytest.raises(PermissionError, match="expired"):
+        maintainer.record_approval(proposal, "signed-token", ("file_writes",))
+
+
+def test_github_remote_normalization():
+    assert normalize_github_remote("https://github.com/owner/repo.git") == "https://github.com/owner/repo.git"
+    assert normalize_github_remote("git@github.com:owner/repo.git") == "https://github.com/owner/repo.git"
+    assert normalize_github_remote("ssh://git@github.com/owner/repo") == "https://github.com/owner/repo.git"
+    with pytest.raises(PermissionError):
+        normalize_github_remote("https://evil.example/owner/repo.git")
+
+
+def test_checkout_origin_must_match_trusted_origin(tmp_path):
+    root = make_repo(tmp_path)
+    git(root, "remote", "add", "origin", "git@github.com:owner/repo.git")
+    verify_checkout_origin(root, "https://github.com/owner/repo.git")
+    with pytest.raises(PermissionError, match="origin mismatch"):
+        verify_checkout_origin(root, "https://github.com/other/repo.git")
+
+
+def test_policy_is_external_and_allowlisted(tmp_path):
+    root = make_repo(tmp_path)
+    policy_file = tmp_path / "trusted-policy.json"
+    policy_file.write_text(json.dumps({
+        "repositories": {
+            "owner/repo": {
+                "origin": "https://github.com/owner/repo.git",
+                "allowed_base_branches": ["main"],
+            }
+        }
+    }))
+    policy_file.chmod(0o600)
+    policy, origin = load_trusted_policy(policy_file, root, "owner/repo")
+    assert origin == "https://github.com/owner/repo.git"
+    assert "owner/repo" in policy.allowed_repositories
+    with pytest.raises(PermissionError, match="not in trusted policy"):
+        load_trusted_policy(policy_file, root, "attacker/repo")
+    with pytest.raises(PermissionError, match="outside"):
+        load_trusted_policy(root / "README.md", root, "owner/repo")
+
+
+def test_policy_symlink_is_rejected(tmp_path):
+    root = make_repo(tmp_path)
+    target = tmp_path / "real-policy.json"
+    target.write_text(json.dumps({"repositories": {}}))
+    target.chmod(0o600)
+    link = tmp_path / "policy-link.json"
+    link.symlink_to(target)
+    with pytest.raises(PermissionError, match="symlink"):
+        load_trusted_policy(link, root, "owner/repo")
+
+
+# Cryptographic approval-gateway integration tests
+import base64
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from repo_maintainer.approval import Ed25519ApprovalGateway, SQLiteApprovalNonceStore
+
+
+def _signed_token(private_key, claims):
+    payload = json.dumps(claims, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    signature = private_key.sign(payload)
+    encode = lambda value: base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+    return f"{encode(payload)}.{encode(signature)}"
+
+
+class MemoryNonceStore:
+    def __init__(self):
+        self.used = set()
+
+    def consume(self, token_id, expires_at):
+        if token_id in self.used:
+            return False
+        self.used.add(token_id)
+        return True
+
+
+def test_ed25519_gateway_verifies_owner_signature_and_rejects_replay(tmp_path):
+    private_key = Ed25519PrivateKey.generate()
+    proposal_digest = "a" * 64
+    claims = {
+        "iss": "buddy-owner-approval",
+        "aud": "buddy-repo-maintainer",
+        "sub": "owner:KrugercoinHF",
+        "repository": "owner/repo",
+        "proposal_digest": proposal_digest,
+        "approved_scope": ["file_writes"],
+        "exp": int((datetime.now(timezone.utc) + timedelta(minutes=5)).timestamp()),
+        "jti": "approval-once-001",
+    }
+    token = _signed_token(private_key, claims)
+    gateway = Ed25519ApprovalGateway(
+        private_key.public_key(), issuer="buddy-owner-approval",
+        audience="buddy-repo-maintainer", repository="owner/repo",
+        nonce_store=MemoryNonceStore(),
+    )
+    verified = gateway.verify_approval(token, proposal_digest, ("file_writes",))
+    assert verified is not None
+    assert verified.subject == "owner:KrugercoinHF"
+    assert gateway.verify_approval(token, proposal_digest, ("file_writes",)) is None
+
+
+def test_ed25519_gateway_rejects_wrong_repository_scope_and_tampering():
+    private_key = Ed25519PrivateKey.generate()
+    claims = {
+        "iss": "buddy-owner-approval",
+        "aud": "buddy-repo-maintainer",
+        "sub": "owner",
+        "repository": "other/repo",
+        "proposal_digest": "b" * 64,
+        "approved_scope": ["file_writes"],
+        "exp": int((datetime.now(timezone.utc) + timedelta(minutes=5)).timestamp()),
+        "jti": "approval-wrong-repo",
+    }
+    token = _signed_token(private_key, claims)
+    gateway = Ed25519ApprovalGateway(
+        private_key.public_key(), issuer="buddy-owner-approval",
+        audience="buddy-repo-maintainer", repository="owner/repo",
+        nonce_store=MemoryNonceStore(),
+    )
+    assert gateway.verify_approval(token, "b" * 64, ("file_writes",)) is None
+    assert gateway.verify_approval(token, "b" * 64, ("deployment",)) is None
+    altered = token[:-1] + ("A" if token[-1] != "A" else "B")
+    assert gateway.verify_approval(altered, "b" * 64, ("file_writes",)) is None
+
+
+def test_sqlite_nonce_store_rejects_replay_across_instances(tmp_path):
+    path = tmp_path / "state" / "approvals.sqlite3"
+    expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+    first = SQLiteApprovalNonceStore(path)
+    second = SQLiteApprovalNonceStore(path)
+    assert first.consume("jti-once", expiry) is True
+    assert second.consume("jti-once", expiry) is False

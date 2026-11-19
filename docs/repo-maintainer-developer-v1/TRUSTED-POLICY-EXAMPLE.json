@@ -1,0 +1,10 @@
+{
+  "repositories": {
+    "KrugercoinHF/buddy-computer-forge": {
+      "origin": "https://github.com/KrugercoinHF/buddy-computer-forge.git",
+      "allowed_base_branches": [
+        "feat/buddy-skill-factory-architecture-v1"
+      ]
+    }
+  }
+}
