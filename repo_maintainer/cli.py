@@ -14,7 +14,7 @@ from .policy import MaintainerPolicy
 def normalize_github_remote(remote: str) -> str:
     """Normalize HTTPS, SSH URL, or SCP-style GitHub remotes to one canonical URL."""
     value = remote.strip()
-    scp = re.fullmatch(r"(?:[^@/:]+@)?github\\.com:([^/]+)/([^/]+?)(?:\\.git)?", value)
+    scp = re.fullmatch(r"(?:[^@/:]+@)?github\.com:([^/]+)/([^/]+?)(?:\.git)?", value)
     if scp:
         owner, name = scp.groups()
         return f"https://github.com/{owner}/{name}.git"
@@ -44,10 +44,13 @@ def verify_checkout_origin(root: Path, expected_origin: str) -> None:
 
 def load_trusted_policy(policy_file: Path, root: Path, repository: str) -> tuple[MaintainerPolicy, str]:
     """Load policy only from a separate, non-writable-by-group/other config file."""
-    policy_file = policy_file.expanduser().resolve(strict=True)
+    raw_policy_file = policy_file.expanduser()
+    if raw_policy_file.is_symlink():
+        raise PermissionError("policy file must not be a symlink")
+    policy_file = raw_policy_file.resolve(strict=True)
     root = root.resolve(strict=True)
-    if policy_file.is_symlink() or not policy_file.is_file():
-        raise PermissionError("policy file must be a regular, non-symlink file")
+    if not policy_file.is_file():
+        raise PermissionError("policy file must be a regular file")
     try:
         policy_file.relative_to(root)
     except ValueError:
@@ -63,11 +66,16 @@ def load_trusted_policy(policy_file: Path, root: Path, repository: str) -> tuple
         raise PermissionError(f"repository is not in trusted policy: {repository}")
     origin = entry.get("origin")
     branches = entry.get("allowed_base_branches")
-    if not isinstance(origin, str) or not isinstance(branches, list) or not branches:
-        raise ValueError("repository policy requires origin and non-empty allowed_base_branches")
+    if (
+        not isinstance(origin, str)
+        or not isinstance(branches, list)
+        or not branches
+        or not all(isinstance(branch, str) and branch.strip() for branch in branches)
+    ):
+        raise ValueError("repository policy requires origin and non-empty string allowed_base_branches")
     policy = MaintainerPolicy(
         allowed_repositories=frozenset({repository}),
-        allowed_base_branches=frozenset(str(branch) for branch in branches),
+        allowed_base_branches=frozenset(branches),
     )
     policy.validate_repository(repository)
     return policy, origin

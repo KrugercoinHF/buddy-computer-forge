@@ -23,11 +23,11 @@ def make_repo(tmp_path: Path) -> Path:
     git(root, "init", "-b", "main")
     git(root, "config", "user.email", "test@example.invalid")
     git(root, "config", "user.name", "Test")
-    (root / "README.md").write_text("# demo\\n")
+    (root / "README.md").write_text("# demo\n")
     (root / "tests").mkdir()
-    (root / "tests" / "test_demo.py").write_text("def test_demo(): assert True\\n")
+    (root / "tests" / "test_demo.py").write_text("def test_demo(): assert True\n")
     (root / ".github" / "workflows").mkdir(parents=True)
-    (root / ".github" / "workflows" / "ci.yml").write_text("name: ci\\n")
+    (root / ".github" / "workflows" / "ci.yml").write_text("name: ci\n")
     git(root, "add", ".")
     git(root, "commit", "-m", "initial")
     return root
@@ -189,3 +189,14 @@ def test_policy_is_external_and_allowlisted(tmp_path):
         load_trusted_policy(policy_file, root, "attacker/repo")
     with pytest.raises(PermissionError, match="outside"):
         load_trusted_policy(root / "README.md", root, "owner/repo")
+
+
+def test_policy_symlink_is_rejected(tmp_path):
+    root = make_repo(tmp_path)
+    target = tmp_path / "real-policy.json"
+    target.write_text(json.dumps({"repositories": {}}))
+    target.chmod(0o600)
+    link = tmp_path / "policy-link.json"
+    link.symlink_to(target)
+    with pytest.raises(PermissionError, match="symlink"):
+        load_trusted_policy(link, root, "owner/repo")
