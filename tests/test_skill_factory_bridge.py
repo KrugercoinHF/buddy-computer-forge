@@ -33,12 +33,14 @@ def make_repo(tmp_path: Path) -> Path:
 def test_proposal_captures_patch_digest_and_quarantine_state(tmp_path):
     root = make_repo(tmp_path)
     proposal = build_proposal(root, "owner/repo", "base")
+    raw_patch = subprocess.run(
+        ["git", "diff", "--binary", "base"], cwd=root, check=True, capture_output=True
+    ).stdout
     assert proposal["state"] == "quarantined"
     assert proposal["requires_owner_approval"] is True
     assert proposal["release_allowed"] is False
-    assert proposal["patch_sha256"] == hashlib.sha256(
-        git(root, "diff", "--binary", "base").encode()
-    ).hexdigest()
+    assert proposal["patch_sha256"] == hashlib.sha256(raw_patch).hexdigest()
+    assert "patch" not in proposal
     assert proposal["changed_files"] == ["README.md"]
 
 
