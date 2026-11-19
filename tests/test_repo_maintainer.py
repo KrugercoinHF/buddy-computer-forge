@@ -200,3 +200,85 @@ def test_policy_symlink_is_rejected(tmp_path):
     link.symlink_to(target)
     with pytest.raises(PermissionError, match="symlink"):
         load_trusted_policy(link, root, "owner/repo")
+
+
+# Cryptographic approval-gateway integration tests
+import base64
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from repo_maintainer.approval import Ed25519ApprovalGateway, SQLiteApprovalNonceStore
+
+
+def _signed_token(private_key, claims):
+    payload = json.dumps(claims, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    signature = private_key.sign(payload)
+    encode = lambda value: base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+    return f"{encode(payload)}.{encode(signature)}"
+
+
+class MemoryNonceStore:
+    def __init__(self):
+        self.used = set()
+
+    def consume(self, token_id, expires_at):
+        if token_id in self.used:
+            return False
+        self.used.add(token_id)
+        return True
+
+
+def test_ed25519_gateway_verifies_owner_signature_and_rejects_replay(tmp_path):
+    private_key = Ed25519PrivateKey.generate()
+    proposal_digest = "a" * 64
+    claims = {
+        "iss": "buddy-owner-approval",
+        "aud": "buddy-repo-maintainer",
+        "sub": "owner:KrugercoinHF",
+        "repository": "owner/repo",
+        "proposal_digest": proposal_digest,
+        "approved_scope": ["file_writes"],
+        "exp": int((datetime.now(timezone.utc) + timedelta(minutes=5)).timestamp()),
+        "jti": "approval-once-001",
+    }
+    token = _signed_token(private_key, claims)
+    gateway = Ed25519ApprovalGateway(
+        private_key.public_key(), issuer="buddy-owner-approval",
+        audience="buddy-repo-maintainer", repository="owner/repo",
+        nonce_store=MemoryNonceStore(),
+    )
+    verified = gateway.verify_approval(token, proposal_digest, ("file_writes",))
+    assert verified is not None
+    assert verified.subject == "owner:KrugercoinHF"
+    assert gateway.verify_approval(token, proposal_digest, ("file_writes",)) is None
+
+
+def test_ed25519_gateway_rejects_wrong_repository_scope_and_tampering():
+    private_key = Ed25519PrivateKey.generate()
+    claims = {
+        "iss": "buddy-owner-approval",
+        "aud": "buddy-repo-maintainer",
+        "sub": "owner",
+        "repository": "other/repo",
+        "proposal_digest": "b" * 64,
+        "approved_scope": ["file_writes"],
+        "exp": int((datetime.now(timezone.utc) + timedelta(minutes=5)).timestamp()),
+        "jti": "approval-wrong-repo",
+    }
+    token = _signed_token(private_key, claims)
+    gateway = Ed25519ApprovalGateway(
+        private_key.public_key(), issuer="buddy-owner-approval",
+        audience="buddy-repo-maintainer", repository="owner/repo",
+        nonce_store=MemoryNonceStore(),
+    )
+    assert gateway.verify_approval(token, "b" * 64, ("file_writes",)) is None
+    assert gateway.verify_approval(token, "b" * 64, ("deployment",)) is None
+    altered = token[:-1] + ("A" if token[-1] != "A" else "B")
+    assert gateway.verify_approval(altered, "b" * 64, ("file_writes",)) is None
+
+
+def test_sqlite_nonce_store_rejects_replay_across_instances(tmp_path):
+    path = tmp_path / "state" / "approvals.sqlite3"
+    expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+    first = SQLiteApprovalNonceStore(path)
+    second = SQLiteApprovalNonceStore(path)
+    assert first.consume("jti-once", expiry) is True
+    assert second.consume("jti-once", expiry) is False
