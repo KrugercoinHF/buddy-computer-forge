@@ -73,7 +73,6 @@ def build_proposal(root: Path, repository: str, base: str) -> dict:
         "state": "quarantined",
         "requires_owner_approval": True,
         "release_allowed": False,
-        "patch": patch.decode("utf-8", errors="replace"),
     }
 
 
@@ -99,6 +98,9 @@ def run_isolated_check(root: Path, image: str, check_name: str, timeout: int = 6
         "--memory=1g",
         "--cpus=2",
         "--tmpfs=/tmp:rw,noexec,nosuid,nodev,size=64m",
+        "--env=HOME=/tmp",
+        "--env=PYTHONDONTWRITEBYTECODE=1",
+        "--env=PYTEST_ADDOPTS=-p no:cacheprovider",
         "--mount", f"type=bind,src={source},dst=/workspace,readonly",
         "--workdir=/workspace",
         "--user=65532:65532",
@@ -111,38 +113,41 @@ def run_isolated_check(root: Path, image: str, check_name: str, timeout: int = 6
             command, cwd=source, text=True, capture_output=True,
             timeout=timeout, check=False, env={"PATH": "/usr/bin:/bin"},
         )
-        stdout = result.stdout[-MAX_LOG_BYTES:]
-        stderr = result.stderr[-MAX_LOG_BYTES:]
         return {
             "check": check_name, "command": list(ALLOWED_CHECKS[check_name]),
             "exit_code": result.returncode, "passed": result.returncode == 0,
-            "stdout": stdout, "stderr": stderr, "started_at": started,
-            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "stdout": result.stdout[-MAX_LOG_BYTES:], "stderr": result.stderr[-MAX_LOG_BYTES:],
+            "started_at": started, "finished_at": datetime.now(timezone.utc).isoformat(),
             "sandbox_image": image, "network": "disabled",
             "source_mount": "read-only", "secrets_provided": False,
         }
     except FileNotFoundError as exc:
         raise RuntimeError("Docker CLI is unavailable; no check was run") from exc
     except subprocess.TimeoutExpired as exc:
+        def tail(value):
+            if value is None:
+                return ""
+            return value.decode(errors="replace") if isinstance(value, bytes) else value
         return {
             "check": check_name, "command": list(ALLOWED_CHECKS[check_name]),
             "exit_code": None, "passed": False, "timed_out": True,
-            "stdout": (exc.stdout or "")[-MAX_LOG_BYTES:],
-            "stderr": (exc.stderr or "")[-MAX_LOG_BYTES:],
+            "stdout": tail(exc.stdout)[-MAX_LOG_BYTES:],
+            "stderr": tail(exc.stderr)[-MAX_LOG_BYTES:],
             "started_at": started, "finished_at": datetime.now(timezone.utc).isoformat(),
             "sandbox_image": image, "network": "disabled",
             "source_mount": "read-only", "secrets_provided": False,
         }
 
 
-def write_report(root: Path, report: dict, out_dir: Path) -> tuple[Path, Path]:
+def write_report(report: dict, out_dir: Path) -> tuple[Path, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     json_path = out_dir / f"{report['proposal_id']}-evaluation.json"
     md_path = out_dir / f"{report['proposal_id']}-approval-request.md"
     json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     checks = report["checks"]
+    heading = "Owner Approval Request" if report["evaluation_passed"] else "Evaluation Report — Changes Required"
     lines = [
-        "# Buddy Skill Factory — Owner Approval Request", "",
+        f"# Buddy Skill Factory — {heading}", "",
         f"- Proposal: `{report['proposal_id']}`",
         f"- Repository: `{report['repository']}`",
         f"- Patch SHA-256: `{report['patch_sha256']}`",
@@ -172,9 +177,7 @@ def evaluate(root: Path, repository: str, base: str, image: str,
     proposal = build_proposal(root, repository, base)
     checks = [run_isolated_check(root, image, name) for name in check_names]
     passed = bool(checks) and all(item["passed"] for item in checks)
-    report = {
-        key: value for key, value in proposal.items() if key != "patch"
-    }
+    report = dict(proposal)
     report.update({
         "state": "awaiting_owner_approval" if passed else "needs_revision",
         "checks": checks,
@@ -183,7 +186,7 @@ def evaluate(root: Path, repository: str, base: str, image: str,
         "release_allowed": False,
         "evaluated_at": datetime.now(timezone.utc).isoformat(),
     })
-    json_path, md_path = write_report(root, report, out_dir)
+    json_path, md_path = write_report(report, out_dir)
     report["report_files"] = [str(json_path), str(md_path)]
     return report
 
