@@ -1,10 +1,10 @@
-# Autonomous Repository Maintainer and Developer v1
+# Autonomous Repository Maintainer and Developer v2
 
-Status: controlled prototype; read-only inspection and proposal generation only.
+Status: controlled automation foundation. Read-only inspection and CI are enabled; privileged automation remains disabled.
 
 ## Mission
 
-Operate as the Buddy Agency Dev meta-wing: maintain approved repositories, turn verified issues and CI failures into scoped work plans, propose code changes, run approved tests, and prepare draft pull requests. It is not an unrestricted coding agent.
+Operate as the Buddy Agency Dev meta-wing: inspect approved repositories, turn verified issues and CI failures into scoped work plans, propose code changes, run approved tests, and prepare draft pull requests. It is not an unrestricted coding agent.
 
 ## Agent roles
 
@@ -15,42 +15,55 @@ Operate as the Buddy Agency Dev meta-wing: maintain approved repositories, turn 
 - A-docs: update docs and changelogs with provenance.
 - A-release: prepare release notes and a release proposal; cannot publish.
 
-## Runtime lanes
+## Implemented in this phase
 
-specification, build, review, test, release-proposal. Each lane emits a versioned artifact, actor identity, source refs, evidence and correlation ID. The implementer cannot approve its own work. Reviewer and tester are separate identities. Release is proposal-only.
+- Read-only Git inspection and deterministic maintenance proposals.
+- Gateway-verified approval evidence bound to the exact proposal digest and requested scope.
+- No approval from a caller-supplied name; absent or invalid gateway evidence fails closed.
+- External trusted policy file, explicit repository allowlist, expected GitHub origin verification and base-branch allowlist.
+- CI workflow for pushes, pull requests and manual dispatch across branches.
+- CI token permissions are read-only; no secrets or write-capable automation credentials are exposed.
 
-## Implemented in this first slice
+## Local policy setup
 
-- Local Git inspection: branch, HEAD, tracked files and dirty-worktree detection.
-- Read-only quality-gate findings for README, tests and GitHub Actions CI.
-- Deterministic proposal IDs and structured work proposals.
-- Repository and base-branch allowlists.
-- Capability flags defaulting to deny for branch creation, file writes, PR creation, merge, deployment and network tests.
-- Human approval record bound to a proposal digest and explicit scope.
-- Adapter contracts for GitHub, coding agents and approval gateways.
-- Unit tests for inspection, policy denial and dirty-worktree detection.
+Create a trusted JSON policy file outside the repository checkout, for example in a user-owned configuration directory:
 
-## Not implemented or enabled
+    {
+      "repositories": {
+        "KrugercoinHF/buddy-computer-forge": {
+          "origin": "https://github.com/KrugercoinHF/buddy-computer-forge.git",
+          "allowed_base_branches": ["feat/buddy-skill-factory-architecture-v1"]
+        }
+      }
+    }
 
-No autonomous patch generation, GitHub write adapter, remote issue or CI polling, sandbox runner, background scheduler, automatic commits, merges, deployments or secrets access. These are separate phases and require independent security review and explicit owner approval.
+Protect it from agent modification (on POSIX, use `chmod 600 trusted-policy.json`). Then run:
 
-## Quick start
+    python -m repo_maintainer.cli . \
+      --repository KrugercoinHF/buddy-computer-forge \
+      --policy-file /secure/path/trusted-policy.json \
+      --base feat/buddy-skill-factory-architecture-v1
 
-From the repository root:
+The CLI refuses policy files inside the checkout, writable-by-group/other files, unknown repositories, mismatched Git origins and unapproved base branches.
 
-    python -m repo_maintainer.cli --repository KrugercoinHF/buddy-computer-forge .
-    pytest tests/test_repo_maintainer.py
+## Approval gateway contract
 
-The CLI only inspects and prints a proposal. It does not write files or call GitHub.
+Production integration must provide an `ApprovalGateway` that verifies a signed owner-approval token and returns `VerifiedApproval` only after checking issuer, audience, signature, repository, proposal digest, exact scope, expiry, revocation and one-time token ID. The gateway must use a durable atomic replay store. No gateway is configured by default, so approval-dependent operations are denied.
 
-## Planned integration
+## Automation status
+
+The GitHub Actions workflow runs the Python test suite on branch pushes, pull requests and manual dispatch. It has read-only repository permissions. It does not write files, create commits or branches, open PRs, merge, deploy, or access secrets.
+
+No background scheduler, autonomous patch generation, sandbox executor, GitHub write adapter, AutoGenius connection or BuddyEco approval service is activated in this phase. Those require separate integration and owner authorization.
+
+## Integration direction
 
 - Buddy Agency Core / BuddyEco: canonical identity, policy, approvals, audit and budgets.
 - AutoGenius: task orchestration, leases, retries and result ownership.
 - Buddy Computer Forge: isolated worker and sandbox execution after security validation.
-- GitHub: read issues, PRs, commits and CI; propose branch and PR actions behind approval.
-- Buddy Knowledge Core: retrieve approved repository docs, design records and provenance.
+- GitHub: read issues, PRs, commits and CI; propose write actions behind approval.
+- Buddy Knowledge Core: approved docs and provenance.
 
-## Acceptance target for next phase
+## Next acceptance gate
 
-A single repo run should produce a reproducible report containing repository identity, base and head SHA, open issue and PR references, failing CI evidence, prioritized work proposals, test plan, risk classification and owner approval requirements. No merge or deployment is in scope.
+Before any code-writing agent is enabled: deploy and independently test the approval gateway; configure trusted policy outside the checkout; provision an isolated disposable sandbox; add a read-only monitor; require independent review and test evidence; then obtain explicit owner approval for each capability expansion. Merge and deployment remain owner actions.
