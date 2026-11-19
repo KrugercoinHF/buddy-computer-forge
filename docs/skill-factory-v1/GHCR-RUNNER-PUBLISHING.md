@@ -22,6 +22,10 @@ Proposed package: `ghcr.io/<repository-owner>/buddy-skill-factory-runner`
 
 ## First run
 
+GitHub exposes `workflow_dispatch` only when the workflow file exists on the repository's default branch. The current PR targets `buddy-agency-integration`, while the repository default branch is `main`. Therefore this workflow is staged but cannot be dispatched from this PR alone. Do not merge or promote it to `main` without a separate Owner decision.
+
+After the workflow has been separately approved and is present on `main`:
+
 1. Open Actions → **Skill Factory runner — build, scan, optional GHCR publish**.
 2. Select the feature branch `feat/skill-factory-vscode-bridge-v1`.
 3. Run with `dry-run` first. Review the build, SBOM and vulnerability scan.
