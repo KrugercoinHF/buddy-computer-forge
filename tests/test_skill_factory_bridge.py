@@ -64,3 +64,27 @@ def test_unknown_check_is_denied(tmp_path):
 
 def test_check_commands_are_fixed():
     assert ALLOWED_CHECKS["pytest"] == ("python", "-m", "pytest", "-q")
+
+
+def test_runner_invocation_enforces_container_boundary(tmp_path, monkeypatch):
+    from repo_maintainer import skill_factory
+
+    captured = {}
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        captured["kwargs"] = kwargs
+        return subprocess.CompletedProcess(command, 0, "ok", "")
+
+    monkeypatch.setattr(skill_factory.subprocess, "run", fake_run)
+    result = run_isolated_check(
+        tmp_path, "runner@sha256:" + "b" * 64, "pytest"
+    )
+    command = captured["command"]
+    assert "--network=none" in command
+    assert "--read-only" in command
+    assert "--cap-drop=ALL" in command
+    assert "--security-opt=no-new-privileges:true" in command
+    assert any("readonly" in value for value in command)
+    assert result["passed"] is True
+    assert result["secrets_provided"] is False
