@@ -1,0 +1,20 @@
+# Constrained developer test image for Buddy Skill Factory.
+# The produced image is published by digest; this is NOT a hostile-code sandbox.
+FROM python:3.12-slim-bookworm
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTEST_ADDOPTS="-p no:cacheprovider" \
+    HOME=/tmp
+
+RUN python -m pip install --no-cache-dir --no-compile \
+      "pytest==8.3.5" \
+      "ruff==0.11.2" \
+    && python -m pip cache purge
+
+WORKDIR /workspace
+USER 65532:65532
+
+# The bridge supplies only fixed allowlisted commands.
+CMD ["python", "-m", "pytest", "-q"]
