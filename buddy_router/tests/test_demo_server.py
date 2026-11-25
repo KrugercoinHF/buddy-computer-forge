@@ -62,5 +62,56 @@ class RouterDemoTests(unittest.TestCase):
             process_request({"task": "x" * 2001, "intent": "plan_task"})
 
 
+class RouterDemoHttpTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import threading
+        from http.server import ThreadingHTTPServer
+        from buddy_router.demo_server import DemoHandler
+
+        cls.server = ThreadingHTTPServer(("127.0.0.1", 0), DemoHandler)
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+        cls.base_url = "http://127.0.0.1:%d" % cls.server.server_address[1]
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+        cls.thread.join(timeout=2)
+
+    def test_dashboard_is_served(self):
+        from urllib.request import urlopen
+        with urlopen(self.base_url + "/") as response:
+            page = response.read().decode("utf-8")
+            self.assertEqual(response.status, 200)
+            self.assertIn("UNIFIED ROUTER / COMMAND DECK", page)
+            self.assertIn("routeForm", page)
+            self.assertIn("/api/profiles", page)
+
+    def test_profile_directory_endpoint(self):
+        import json
+        from urllib.request import urlopen
+        with urlopen(self.base_url + "/api/profiles") as response:
+            data = json.loads(response.read().decode("utf-8"))
+        self.assertGreaterEqual(len(data["profiles"]), 7)
+
+    def test_route_endpoint_returns_trace(self):
+        import json
+        from urllib.request import Request, urlopen
+        body = json.dumps({
+            "task": "Research a launch plan",
+            "intent": "research_and_summarize",
+            "requested_profile": None,
+        }).encode("utf-8")
+        request = Request(self.base_url + "/api/route", data=body,
+                          headers={"Content-Type": "application/json"})
+        with urlopen(request) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        self.assertEqual(data["decision"]["profile_id"], "grokbot")
+        self.assertEqual(len(data["trace"]), 6)
+        self.assertFalse(data["safety"]["computer_execution_enabled"])
+
+
 if __name__ == "__main__":
     unittest.main()
