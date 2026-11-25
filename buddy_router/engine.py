@@ -13,6 +13,7 @@ REGISTRY = {
 }
 DISABLED = {"computer-forge"}
 
+
 @dataclass
 class Decision:
     trace_id: str
@@ -24,21 +25,64 @@ class Decision:
     capabilities: list[str]
     execution_enabled: bool = False
 
+
 def route(request: dict[str, Any]) -> dict[str, Any]:
     trace = str(request.get("trace_id", ""))
     intent = str(request.get("intent", ""))
     if not trace or not intent:
         return asdict(Decision(trace, intent, None, "R3", "deny", "trace_id and intent are required", [], False))
+
+    # A requested profile is an identifier, never a registry record. Validate
+    # its type and membership before using it as a dictionary key.
     chosen = request.get("requested_profile")
-    profile = REGISTRY.get(chosen) if chosen else next((p for p in REGISTRY if intent in REGISTRY[p]["intents"]), None)
-    if not profile:
-        return asdict(Decision(trace, intent, None, "R1", "deny", "No registered profile matches this intent", [], False))
-    spec = REGISTRY[profile]
+    if chosen is None:
+        profile_id = next(
+            (profile_id for profile_id, spec in REGISTRY.items() if intent in spec["intents"]),
+            None,
+        )
+    elif not isinstance(chosen, str) or not chosen.strip():
+        return asdict(Decision(
+            trace, intent, None, "R1", "deny",
+            "requested_profile must be a non-empty registered profile identifier", [], False,
+        ))
+    elif chosen not in REGISTRY:
+        return asdict(Decision(
+            trace, intent, None, "R1", "deny",
+            "Requested profile is not registered", [], False,
+        ))
+    else:
+        profile_id = chosen
+
+    if profile_id is None:
+        return asdict(Decision(
+            trace, intent, None, "R1", "deny",
+            "No registered profile matches this intent", [], False,
+        ))
+
+    spec = REGISTRY[profile_id]
     risk = spec["risk"]
-    if profile in DISABLED:
-        return asdict(Decision(trace, intent, profile, risk, "approval_required", "Profile is disabled for execution; approval and a separately reviewed adapter would be required", spec["capabilities"], False))
-    if chosen and intent not in spec["intents"]:
-        return asdict(Decision(trace, intent, profile, risk, "deny", "Requested profile does not support this intent", [], False))
+
+    # Intent compatibility must be checked before special risk/disabled
+    # handling; a mismatched request is a denial, not an approval request.
+    if intent not in spec["intents"]:
+        return asdict(Decision(
+            trace, intent, profile_id, risk, "deny",
+            "Requested profile does not support this intent", [], False,
+        ))
+
+    if profile_id in DISABLED:
+        return asdict(Decision(
+            trace, intent, profile_id, risk, "approval_required",
+            "Profile is disabled for execution; approval and a separately reviewed adapter would be required",
+            spec["capabilities"], False,
+        ))
+
     policy = "allow_advisory" if risk in ("R0", "R1") else "approval_required"
-    reason = "Advisory routing only; no execution" if policy == "allow_advisory" else "Consequential operation requires explicit owner approval"
-    return asdict(Decision(trace, intent, profile, risk, policy, reason, spec["capabilities"], False))
+    reason = (
+        "Advisory routing only; no execution"
+        if policy == "allow_advisory"
+        else "Consequential operation requires explicit owner approval"
+    )
+    return asdict(Decision(
+        trace, intent, profile_id, risk, policy, reason, spec["capabilities"], False,
+    ))
