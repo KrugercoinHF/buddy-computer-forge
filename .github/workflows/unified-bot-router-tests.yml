@@ -1,7 +1,7 @@
 name: Unified Bot Router Tests
 on:
   pull_request:
-    branches: [feat/ai-boardroom-simulator-v1]
+    branches: [feat/ai-boardroom-simulator-v1, feat/unified-bot-systems-v1]
   push:
     branches: [feat/unified-bot-systems-v1]
 permissions:

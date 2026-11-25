@@ -23,5 +23,5 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["buddy", "worker"]
+packages = ["buddy", "worker", "buddy_router"]
 py-modules = ["boardroom_app"]
