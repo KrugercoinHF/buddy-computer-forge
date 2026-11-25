@@ -1,8 +1,20 @@
-# Buddy Skill Factory v1 — Architecture Proposal
+# Buddy Skill Factory v1 — Controlled Architecture and Bridge
 
-Status: **architecture-only proposal; not runtime-enabled**  
-Scope: Buddy Agency ecosystem (Buddy Desktop Dashboard, Buddy Computer Forge, BuddyBot, AutoGenius and BattleMind when their source workspaces are verified and connected).  
-Operating mode: **controlled autonomy**. Agents may propose, generate and test skills in isolated sandboxes. Only the Owner or an explicitly delegated human approver may promote, publish, distribute or grant capabilities.
+Status: architecture contract plus a **local VS Code proposal/evaluation bridge**. The bridge is a controlled developer integration, not a production Skill Factory service. Agents can prepare candidate changes through VS Code AI assistants; the local bridge captures proposal metadata and supports fixed, digest-pinned Docker checks. Candidates remain quarantined.
+
+Scope: Buddy Agency ecosystem (Buddy Desktop Dashboard, Buddy Computer Forge, BuddyBot, AutoGenius and BattleMind when their source workspaces are verified and connected).
+
+Operating mode: **controlled autonomy**. Agents may propose, generate and test candidates. Only the Owner or an explicitly delegated human approver may promote, publish, distribute or grant capabilities.
+
+## Implemented entry points
+
+- [VS Code toolchain and multimodal contract](VSCODE-TOOLCHAIN-AND-MULTIMODAL.md)
+- [VS Code bridge implementation and operating instructions](VSCODE-BRIDGE-IMPLEMENTATION.md)
+- Local CLI: `python -m repo_maintainer.skill_factory propose` and `evaluate`
+- VS Code Tasks: **Buddy Skill Factory: propose current diff** and **Buddy Skill Factory: evaluate in isolated Docker**
+- Tests: `tests/test_skill_factory_bridge.py`
+
+The bridge captures repository/base/head identity, changed paths and a SHA-256 digest. It refuses untracked files that would otherwise be omitted. Evaluation supports only fixed allowlisted checks inside a digest-pinned Docker image, with network disabled, read-only source, no secrets and resource limits. Passing checks create an `awaiting_owner_approval` report—not an approval.
 
 ## Goals
 
@@ -55,14 +67,13 @@ A failed test transitions to `rejected` or `needs_revision`. Any material change
 - **AutoGenius / BattleMind:** adapters remain disabled until their actual repositories/workspaces and contracts are verified.
 - **Buddy Agency Core:** canonical policy, owner approvals, audit and skill catalog.
 
-## Delivery phases
+## Remaining phases
 
-1. **P0 — Contracts and threat model:** manifest, lifecycle, permissions, audit events and approval policy.
-2. **P1 — Registry:** immutable versions, provenance, signatures and revocation metadata.
-3. **P2 — Quarantine builder:** deterministic package assembly and static validation; no execution.
-4. **P3 — Sandbox runner:** disposable isolation, resource quotas, network deny-by-default and evidence capture.
-5. **P4 — Evaluator:** tests, policy checks, reproducibility and regression scoring.
-6. **P5 — Approval and distribution:** explicit owner decision, project allowlists, signed artifacts and rollback.
-7. **P6 — Observability:** usage, failures, drift, cost where measurable and periodic recertification.
+1. **P1 — Registry:** immutable versions, provenance, signatures and revocation metadata.
+2. **P2 — Quarantine builder:** deterministic package assembly and static validation.
+3. **P3 — Stronger sandbox:** independently reviewed microVM or equivalent isolation for hostile code.
+4. **P4 — Evaluator:** expanded tests, policy checks, reproducibility and regression scoring.
+5. **P5 — Approval and distribution:** authenticated owner decision, project allowlists, signed artifacts and rollback.
+6. **P6 — Observability:** usage, failures, drift, cost where measurable and periodic recertification.
 
-Each phase requires a separate reviewed implementation PR. Security-boundary phases require explicit owner approval before implementation or activation.
+The local Docker runner is not a sufficient boundary for hostile code. The registry API, authenticated approval service, stronger sandbox and distribution broker remain unimplemented. No runtime activation, merge, deployment or skill release is claimed.

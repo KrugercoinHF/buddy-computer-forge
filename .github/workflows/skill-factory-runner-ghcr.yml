@@ -1,0 +1,120 @@
+name: Skill Factory runner — build, scan, optional GHCR publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_mode:
+        description: "Dry run builds and scans only; publish pushes the scanned image to private GHCR"
+        required: true
+        type: choice
+        options:
+          - dry-run
+          - publish
+        default: dry-run
+
+permissions:
+  contents: read
+
+concurrency:
+  group: skill-factory-runner-ghcr
+  cancel-in-progress: false
+
+jobs:
+  build-and-scan:
+    name: Build and scan runner (no package-write permission)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout selected ref
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Build local runner image
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/buddy-skill-factory-runner
+        run: |
+          docker build --pull --file Dockerfile.skill-factory-runner --tag "$IMAGE:ci-${GITHUB_SHA}" .
+          docker image inspect "$IMAGE:ci-${GITHUB_SHA}" --format '{{.Id}}'
+
+      - name: Generate CycloneDX SBOM
+        uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4
+        with:
+          scan-type: image
+          image-ref: ghcr.io/${{ github.repository_owner }}/buddy-skill-factory-runner:ci-${{ github.sha }}
+          format: cyclonedx
+          output: sbom.cdx.json
+          exit-code: "0"
+          trivyignores: ""
+
+      - name: Fail on HIGH or CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4
+        with:
+          scan-type: image
+          image-ref: ghcr.io/${{ github.repository_owner }}/buddy-skill-factory-runner:ci-${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Smoke-test installed tools without candidate source
+        run: |
+          docker run --rm --network=none --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
+            --cap-drop=ALL --security-opt=no-new-privileges:true \
+            --pids-limit=64 --memory=512m --cpus=1 \
+            --user=65532:65532 \
+            ghcr.io/${{ github.repository_owner }}/buddy-skill-factory-runner:ci-${{ github.sha }} \
+            python -c "import pytest, ruff; print('pytest', pytest.__version__); print('ruff', ruff.__version__)"
+
+      - name: Save scanned image and SBOM
+        run: |
+          docker save ghcr.io/${{ github.repository_owner }}/buddy-skill-factory-runner:ci-${{ github.sha }} -o runner-image.tar
+
+      - name: Upload build evidence
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+        with:
+          name: buddy-skill-factory-runner-evidence-${{ github.sha }}
+          path: |
+            runner-image.tar
+            sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish scanned image to GHCR
+    if: ${{ inputs.release_mode == 'publish' }}
+    needs: build-and-scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download scanned build evidence
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: buddy-skill-factory-runner-evidence-${{ github.sha }}
+
+      - name: Load exact scanned image
+        run: docker load --input runner-image.tar
+
+      - name: Authenticate to GHCR with workflow token
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push scanned image
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/buddy-skill-factory-runner
+          TAG: ci-${{ github.sha }}
+        run: |
+          docker push "$IMAGE:$TAG"
+          DIGEST="$(docker image inspect "$IMAGE:$TAG" --format '{{index .RepoDigests 0}}')"
+          echo "Published image reference: $DIGEST" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Verify package visibility is Private in GitHub Packages before use."
+          echo "Use this exact digest in the local Skill Factory evaluation command."
