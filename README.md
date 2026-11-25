@@ -14,6 +14,18 @@ uvicorn buddy.main:app --host 127.0.0.1 --port 8741
 
 Open http://127.0.0.1:8741/ and http://127.0.0.1:8741/docs.
 
+## Unified Buddy Router — live command deck
+
+Run the local menu-driven routing demo from the repository root:
+
+```bash
+python -m buddy_router.demo_server
+```
+
+Open http://127.0.0.1:8760/. The interface discovers specialist profiles, accepts a task, supports automatic or manual profile selection, shows the real router's policy decision and displays a six-step trace. It binds to localhost only and requires no additional dependencies. See [buddy_router/README.md](buddy_router/README.md).
+
+The demo is advisory-only: no AI provider calls, external actions, task persistence or computer execution. Computer Forge remains disabled for execution.
+
 ## AI Boardroom Simulator V1
 
 Run the existing Boardroom API on localhost port 8750:
