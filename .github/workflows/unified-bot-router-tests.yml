@@ -1,0 +1,18 @@
+name: Unified Bot Router Tests
+on:
+  pull_request:
+    branches: [feat/ai-boardroom-simulator-v1]
+  push:
+    branches: [feat/unified-bot-systems-v1]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run router tests
+        run: python -m unittest discover -s buddy_router/tests -v
