@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Buddy Bot Profile v1",
+  "type": "object",
+  "required": [
+    "id",
+    "label",
+    "role",
+    "status",
+    "risk_level",
+    "capabilities"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "label": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "proposed",
+        "available",
+        "unavailable",
+        "disabled"
+      ]
+    },
+    "risk_level": {
+      "enum": [
+        "R0",
+        "R1",
+        "R2",
+        "R3"
+      ]
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "memory_scope": {
+      "enum": [
+        "none",
+        "session",
+        "project",
+        "owner-approved-shared"
+      ]
+    },
+    "approval_required": {
+      "type": "boolean"
+    },
+    "provider": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "menu_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

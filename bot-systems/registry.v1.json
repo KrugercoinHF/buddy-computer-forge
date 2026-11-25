@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "status": "proposal",
+  "owner_authority": "owner_approval_required",
+  "coordinator": "autogenius",
+  "profiles": [
+    {
+      "id": "buddybot",
+      "label": "BuddyBot",
+      "role": "personal_assistant_context_interface",
+      "status": "concept_mapping"
+    },
+    {
+      "id": "grokbot",
+      "label": "Grokbot",
+      "role": "research_reasoning_coding_profile",
+      "status": "concept_mapping"
+    },
+    {
+      "id": "menusbot",
+      "label": "Menusbot",
+      "role": "menu_command_interface",
+      "status": "history_recovery_pending"
+    },
+    {
+      "id": "jarvis",
+      "label": "Jarvis",
+      "role": "assistant_workflow_profile",
+      "status": "history_recovery_pending"
+    },
+    {
+      "id": "manus-patterns",
+      "label": "Manus-style agents",
+      "role": "planning_bounded_task_execution",
+      "status": "pattern_only"
+    },
+    {
+      "id": "battlemind",
+      "label": "BattleMind",
+      "role": "evaluation_challenges_quality",
+      "status": "concept_mapping"
+    },
+    {
+      "id": "ai-boardroom",
+      "label": "Buddy AI Boardroom",
+      "role": "multi-agent_deliberation",
+      "status": "existing_branch_audit_required"
+    },
+    {
+      "id": "knowledge-core",
+      "label": "Buddy Knowledge Core",
+      "role": "permissioned_memory_provenance",
+      "status": "integration_audit_required"
+    },
+    {
+      "id": "muse",
+      "label": "Muse",
+      "role": "interface_workflow_surface",
+      "status": "integration_audit_required"
+    },
+    {
+      "id": "computer-forge",
+      "label": "Buddy Computer Forge",
+      "role": "sandboxed_approved_computer_operations",
+      "status": "existing_repo"
+    }
+  ],
+  "defaults": {
+    "autonomy": "advisory",
+    "external_actions": false,
+    "computer_execution": false,
+    "provider_calls": false,
+    "approval_required_for_consequential_actions": true
+  }
+}\n
