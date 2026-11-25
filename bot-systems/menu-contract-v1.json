@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "menu_id": "main",
+  "label": "Buddy Agency",
+  "items": [
+    {
+      "id": "research",
+      "label": "Research",
+      "intent": "research_and_summarize",
+      "risk": "R0",
+      "target_profile": "grokbot"
+    },
+    {
+      "id": "assistant",
+      "label": "Personal assistant",
+      "intent": "personal_assistance",
+      "risk": "R0",
+      "target_profile": "buddybot"
+    },
+    {
+      "id": "planning",
+      "label": "Plan a task",
+      "intent": "plan_task",
+      "risk": "R1",
+      "target_profile": "manus-patterns"
+    },
+    {
+      "id": "evaluate",
+      "label": "Evaluate / compare",
+      "intent": "evaluate_solution",
+      "risk": "R1",
+      "target_profile": "battlemind"
+    },
+    {
+      "id": "boardroom",
+      "label": "Boardroom simulation",
+      "intent": "simulate_boardroom",
+      "risk": "R1",
+      "target_profile": "ai-boardroom"
+    },
+    {
+      "id": "computer",
+      "label": "Computer operations",
+      "intent": "computer_operation_request",
+      "risk": "R3",
+      "target_profile": "computer-forge",
+      "approval_required": true,
+      "execution_disabled": true
+    },
+    {
+      "id": "skills",
+      "label": "Skills and tools",
+      "intent": "discover_capabilities",
+      "risk": "R0",
+      "target_profile": "autogenius"
+    }
+  ]
+}
