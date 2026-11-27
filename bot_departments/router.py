@@ -47,7 +47,7 @@ def route_task(task: str, department: str | None = None, *, registry: dict[str, 
                 break
     if not selected["enabled"]:
         return {"department": selected["id"], "name": selected["name"], "decision": "DENY_DISABLED",
-                "risk_ceiling": selected["risk_ceiling"], "capabilities": [], "reason": "Department disabled; no fallback execution", "advisory_only": True}
+                "risk_ceiling": selected["risk_ceiling"], "capabilities": [], "reason": "Department disabled; no fallback execution", "advisory_only": True, "execution_enabled": False}
     return {"department": selected["id"], "name": selected["name"], "decision": "ROUTE_ADVISORY",
             "risk_ceiling": selected["risk_ceiling"], "capabilities": selected["capabilities"],
             "profiles": selected["profiles"], "reason": reason, "advisory_only": True,
