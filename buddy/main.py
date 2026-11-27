@@ -17,6 +17,8 @@ from .db import execute, fetch_all, fetch_one, get_connection, init_db
 from .workspace import list_workspace_files, parse_payload, read_workspace_file, write_workspace_note
 from .build_factory import init_build_factory_db, router as build_factory_router
 
+from bot_departments.api import router as bot_departments_router
+
 
 ALLOWED_TASK_TYPES = {
     "collect_system_info",
@@ -95,6 +97,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Buddy Computer Forge", version="0.8.0", lifespan=lifespan)
 app.include_router(build_factory_router)
+app.include_router(bot_departments_router)
 
 @app.get("/")
 def dashboard() -> HTMLResponse:
