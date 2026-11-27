@@ -1,4 +1,4 @@
-from bot_departments.api import route, departments, RouteRequest, require_owner_token
+from bot_departments.api import route, departments, RouteRequest, require_department_owner
 from fastapi import HTTPException
 
 
@@ -17,7 +17,7 @@ def test_disabled_department_api_denies():
 def test_auth_missing_rejected(monkeypatch):
     monkeypatch.setenv("BUDDY_OWNER_TOKEN", "test-token")
     try:
-        require_owner_token(None)
+        require_department_owner(None)
     except HTTPException as exc:
         assert exc.status_code == 401
     else:
