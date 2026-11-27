@@ -1,0 +1,198 @@
+{
+  "version": "1.0.0",
+  "coordinator": "autogenius",
+  "departments": [
+    {
+      "id": "executive",
+      "name": "Jarvis / Executive Command",
+      "purpose": "Task intake, menu navigation, status, coordination",
+      "risk_ceiling": "R1",
+      "profiles": [
+        "jarvis",
+        "menusbot"
+      ],
+      "capabilities": [
+        "task_intake",
+        "status",
+        "menu_navigation"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "research",
+      "name": "BuddyGrokBot / Intelligence & Research",
+      "purpose": "Research, reasoning, synthesis and evidence review",
+      "risk_ceiling": "R1",
+      "profiles": [
+        "buddygrokbot"
+      ],
+      "capabilities": [
+        "research",
+        "summarize",
+        "compare",
+        "source_review"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "engineering",
+      "name": "Dev Wing",
+      "purpose": "Repository analysis, code proposals, test planning and review",
+      "risk_ceiling": "R1",
+      "profiles": [
+        "architect",
+        "implementer",
+        "reviewer",
+        "tester",
+        "docs"
+      ],
+      "capabilities": [
+        "repo_read",
+        "patch_proposal",
+        "test_plan"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "boardroom",
+      "name": "AI Boardroom",
+      "purpose": "Multi-role deliberation, critique and recommendation synthesis",
+      "risk_ceiling": "R1",
+      "profiles": [
+        "boardroom"
+      ],
+      "capabilities": [
+        "deliberate",
+        "evaluate",
+        "recommend"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "knowledge",
+      "name": "Knowledge Core",
+      "purpose": "Permissioned retrieval, provenance and memory proposals",
+      "risk_ceiling": "R1",
+      "profiles": [
+        "knowledge"
+      ],
+      "capabilities": [
+        "approved_retrieval",
+        "citation",
+        "memory_proposal"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "battle",
+      "name": "BattleMind / Quality & Evaluation",
+      "purpose": "Compare approaches, challenge assumptions, run evaluation plans",
+      "risk_ceiling": "R1",
+      "profiles": [
+        "battlemind"
+      ],
+      "capabilities": [
+        "benchmark_plan",
+        "critique",
+        "quality_review"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "operations",
+      "name": "Operations & Automation",
+      "purpose": "Mission planning, monitoring and automation proposals",
+      "risk_ceiling": "R1",
+      "profiles": [
+        "autogenius",
+        "ops"
+      ],
+      "capabilities": [
+        "mission_plan",
+        "monitoring_plan"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "computer",
+      "name": "Buddy Computer Forge",
+      "purpose": "Controlled local computer-operation proposals",
+      "risk_ceiling": "R3",
+      "profiles": [
+        "computerforge"
+      ],
+      "capabilities": [
+        "device_status",
+        "sandbox_proposal"
+      ],
+      "enabled": false
+    },
+    {
+      "id": "finance",
+      "name": "Finance & Business",
+      "purpose": "Budgets, business planning and analysis",
+      "risk_ceiling": "R1",
+      "profiles": [
+        "finance"
+      ],
+      "capabilities": [
+        "budget_analysis",
+        "business_plan"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "communications",
+      "name": "Communications",
+      "purpose": "Drafting communication and content",
+      "risk_ceiling": "R1",
+      "profiles": [
+        "communications"
+      ],
+      "capabilities": [
+        "draft",
+        "edit",
+        "content_plan"
+      ],
+      "enabled": true
+    }
+  ],
+  "menu": [
+    {
+      "id": "research",
+      "label": "Research & Intelligence"
+    },
+    {
+      "id": "engineering",
+      "label": "Engineering & Build"
+    },
+    {
+      "id": "boardroom",
+      "label": "AI Boardroom"
+    },
+    {
+      "id": "knowledge",
+      "label": "Knowledge & Memory"
+    },
+    {
+      "id": "battle",
+      "label": "BattleMind / QA"
+    },
+    {
+      "id": "operations",
+      "label": "Operations & Automation"
+    },
+    {
+      "id": "finance",
+      "label": "Finance & Business"
+    },
+    {
+      "id": "communications",
+      "label": "Communication & Content"
+    },
+    {
+      "id": "computer",
+      "label": "Computer Forge (disabled)"
+    }
+  ]
+}
