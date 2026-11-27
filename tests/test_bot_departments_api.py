@@ -26,4 +26,4 @@ def test_auth_missing_rejected(monkeypatch):
 
 def test_auth_valid(monkeypatch):
     monkeypatch.setenv("BUDDY_OWNER_TOKEN", "test-token")
-    assert require_owner_token("Bearer test-token") is None
+    assert require_department_owner("Bearer test-token") is None
