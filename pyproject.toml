@@ -23,8 +23,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["buddy", "worker", "bot_departments"]
+packages = ["buddy", "worker", "bot_departments", "digital_citizens"]
 
 [tool.setuptools.package-data]
 bot_departments = ["registry.json"]
+digital_citizens = ["registry.json"]
 py-modules = ["boardroom_app"]
